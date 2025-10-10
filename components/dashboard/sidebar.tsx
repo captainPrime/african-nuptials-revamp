@@ -1,0 +1,90 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { LayoutDashboard, User, Heart, MessageSquare, CreditCard, Settings, LogOut } from "lucide-react"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: User, label: "Profile", href: "/dashboard/profile" },
+  { icon: Heart, label: "Interests", href: "/dashboard/interests" },
+  { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
+  { icon: CreditCard, label: "Plan", href: "/dashboard/plan" },
+  { icon: Settings, label: "Setting", href: "/dashboard/settings" },
+]
+
+export function DashboardSidebar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = getSupabaseBrowserClient()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+    router.refresh()
+  }
+
+  return (
+    <aside className="w-64 border-r border-border bg-card">
+      <div className="flex h-full flex-col">
+        <div className="border-b border-border p-6">
+          <Link href="/" className="flex items-center gap-2">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M16 4C16 4 12 8 12 12C12 14.2091 13.7909 16 16 16C18.2091 16 20 14.2091 20 12C20 8 16 4 16 4Z"
+                fill="currentColor"
+                className="text-primary"
+              />
+              <path
+                d="M8 16C8 16 4 20 4 24C4 26.2091 5.79086 28 8 28C10.2091 28 12 26.2091 12 24C12 20 8 16 8 16Z"
+                fill="currentColor"
+                className="text-primary"
+              />
+              <path
+                d="M24 16C24 16 20 20 20 24C20 26.2091 21.7909 28 24 28C26.2091 28 28 26.2091 28 24C28 20 24 16 24 16Z"
+                fill="currentColor"
+                className="text-primary"
+              />
+            </svg>
+            <span className="font-serif text-xl font-semibold text-primary">AfricaNuptials</span>
+          </Link>
+        </div>
+
+        <nav className="flex-1 space-y-1 p-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="border-t border-border p-4">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
