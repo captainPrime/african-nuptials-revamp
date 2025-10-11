@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, User, Heart, MessageSquare, CreditCard, Settings, LogOut, X } from "lucide-react"
+import { LayoutDashboard, User, Heart, MessageSquare, CreditCard, Settings, LogOut, X, Users } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: User, label: "Profile", href: "/dashboard/profile" },
   { icon: Heart, label: "Interests", href: "/dashboard/interests" },
+  { icon: Users, label: "Friends", href: "/dashboard/friends" },
   { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
   { icon: CreditCard, label: "Plan", href: "/dashboard/plan" },
   { icon: Settings, label: "Setting", href: "/dashboard/settings" },

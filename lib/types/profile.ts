@@ -9,6 +9,10 @@ export type ProfileCreatedFor =
 export type Gender = "male" | "female"
 export type MembershipPlan = "free" | "premium" | "vip"
 
+export type VisibilityOption = "all_users" | "friends" | "hidden"
+export type ProfileVisibility = "all_users" | "friends"
+export type InterestRequestPermission = "all_users" | "none"
+
 export interface Profile {
   id: string
   email: string
@@ -54,6 +58,14 @@ export interface Profile {
   likes_received: number
   interests_received: number
   clicks_received: number
+  profile_visibility?: ProfileVisibility
+  who_can_send_interest?: InterestRequestPermission
+  phone_visibility?: VisibilityOption
+  email_visibility?: VisibilityOption
+  notify_interest_request?: boolean
+  notify_chat?: boolean
+  notify_profile_views?: boolean
+  notify_new_matches?: boolean
   created_at: string
   updated_at: string
 }
