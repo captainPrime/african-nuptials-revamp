@@ -4,7 +4,8 @@ import type React from "react"
 
 import { useState, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Camera, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Camera, Loader2, Upload } from "lucide-react"
 import { uploadToCloudinary } from "@/lib/cloudinary"
 import { useToast } from "@/hooks/use-toast"
 
@@ -12,9 +13,15 @@ interface ProfilePhotoUploadProps {
   currentPhoto?: string
   onUploadComplete: (url: string) => void
   initials?: string
+  buttonText?: string
 }
 
-export function ProfilePhotoUpload({ currentPhoto, onUploadComplete, initials = "AN" }: ProfilePhotoUploadProps) {
+export function ProfilePhotoUpload({
+  currentPhoto,
+  onUploadComplete,
+  initials = "AN",
+  buttonText,
+}: ProfilePhotoUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState(currentPhoto)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,7 +62,7 @@ export function ProfilePhotoUpload({ currentPhoto, onUploadComplete, initials = 
 
       toast({
         title: "Upload successful",
-        description: "Profile photo updated successfully",
+        description: "Photo updated successfully",
       })
     } catch (error) {
       console.error("[v0] Upload error:", error)
@@ -70,6 +77,27 @@ export function ProfilePhotoUpload({ currentPhoto, onUploadComplete, initials = 
         fileInputRef.current.value = ""
       }
     }
+  }
+
+  if (buttonText) {
+    return (
+      <div>
+        <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} variant="outline">
+          {uploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              {buttonText}
+            </>
+          )}
+        </Button>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+      </div>
+    )
   }
 
   return (

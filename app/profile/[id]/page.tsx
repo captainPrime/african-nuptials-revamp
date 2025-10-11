@@ -19,6 +19,7 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true)
   const [sendingInterest, setSendingInterest] = useState(false)
   const [interestStatus, setInterestStatus] = useState<string | null>(null)
+  const [isLiked, setIsLiked] = useState(false)
   const supabase = getSupabaseBrowserClient()
   const params = useParams()
   const { toast } = useToast()
@@ -43,6 +44,17 @@ export default function PublicProfilePage() {
 
         if (existingRequest) {
           setInterestStatus(existingRequest.status)
+        }
+
+        const { data: existingLike } = await supabase
+          .from("profile_likes")
+          .select("id")
+          .eq("liker_id", user.id)
+          .eq("liked_profile_id", params.id as string)
+          .single()
+
+        if (existingLike) {
+          setIsLiked(true)
         }
       }
 
@@ -102,6 +114,46 @@ export default function PublicProfilePage() {
       })
     } finally {
       setSendingInterest(false)
+    }
+  }
+
+  const handleLike = async () => {
+    if (!currentUser) {
+      toast({
+        title: "Login required",
+        description: "Please login to like profiles",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isLiked) {
+      // Unlike
+      const { error } = await supabase
+        .from("profile_likes")
+        .delete()
+        .eq("liker_id", currentUser.id)
+        .eq("liked_profile_id", params.id as string)
+
+      if (!error) {
+        setIsLiked(false)
+        toast({
+          title: "Profile unliked",
+        })
+      }
+    } else {
+      // Like
+      const { error } = await supabase.from("profile_likes").insert({
+        liker_id: currentUser.id,
+        liked_profile_id: params.id as string,
+      })
+
+      if (!error) {
+        setIsLiked(true)
+        toast({
+          title: "Profile liked!",
+        })
+      }
     }
   }
 
@@ -182,8 +234,13 @@ export default function PublicProfilePage() {
                         {sendingInterest ? "Sending..." : "Send Interest"}
                       </Button>
                     )}
-                    <Button size="icon" variant="outline">
-                      <Heart className="h-5 w-5" />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className={isLiked ? "text-red-500" : ""}
+                      onClick={handleLike}
+                    >
+                      <Heart className={`h-5 w-5 ${isLiked ? "fill-current" : ""}`} />
                     </Button>
                     <Button size="icon" variant="outline">
                       <MessageSquare className="h-5 w-5" />
