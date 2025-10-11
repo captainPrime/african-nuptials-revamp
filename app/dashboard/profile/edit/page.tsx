@@ -327,7 +327,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="religion">Religion *</Label>
               <Select value={formData.religion} onValueChange={(value) => handleInputChange("religion", value)}>
-                <SelectTrigger id="religion">
+                <SelectTrigger id="religion" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -341,7 +341,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="community">Community *</Label>
               <Select value={formData.community} onValueChange={(value) => handleInputChange("community", value)}>
-                <SelectTrigger id="community">
+                <SelectTrigger id="community" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,7 +358,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="living_in">Living In *</Label>
               <Select value={formData.living_in} onValueChange={(value) => handleInputChange("living_in", value)}>
-                <SelectTrigger id="living_in">
+                <SelectTrigger id="living_in" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -407,7 +407,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="body_type">Body Type</Label>
               <Select value={formData.body_type} onValueChange={(value) => handleInputChange("body_type", value)}>
-                <SelectTrigger id="body_type">
+                <SelectTrigger id="body_type" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -421,7 +421,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="complexion">Complexion</Label>
               <Select value={formData.complexion} onValueChange={(value) => handleInputChange("complexion", value)}>
-                <SelectTrigger id="complexion">
+                <SelectTrigger id="complexion" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -445,7 +445,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="education">Education</Label>
               <Select value={formData.education} onValueChange={(value) => handleInputChange("education", value)}>
-                <SelectTrigger id="education">
+                <SelectTrigger id="education" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -532,7 +532,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="family_type">Family Type</Label>
               <Select value={formData.family_type} onValueChange={(value) => handleInputChange("family_type", value)}>
-                <SelectTrigger id="family_type">
+                <SelectTrigger id="family_type" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -547,7 +547,7 @@ export default function EditProfilePage() {
                 value={formData.family_status}
                 onValueChange={(value) => handleInputChange("family_status", value)}
               >
-                <SelectTrigger id="family_status">
+                <SelectTrigger id="family_status" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -571,7 +571,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="diet">Diet</Label>
               <Select value={formData.diet} onValueChange={(value) => handleInputChange("diet", value)}>
-                <SelectTrigger id="diet">
+                <SelectTrigger id="diet" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -584,7 +584,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="smoking">Smoking</Label>
               <Select value={formData.smoking} onValueChange={(value) => handleInputChange("smoking", value)}>
-                <SelectTrigger id="smoking">
+                <SelectTrigger id="smoking" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -597,7 +597,7 @@ export default function EditProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="drinking">Drinking</Label>
               <Select value={formData.drinking} onValueChange={(value) => handleInputChange("drinking", value)}>
-                <SelectTrigger id="drinking">
+                <SelectTrigger id="drinking" className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>

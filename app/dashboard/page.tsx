@@ -29,11 +29,20 @@ export default function DashboardPage() {
   const [sentRequests, setSentRequests] = useState<InterestRequest[]>([])
   const [likesCount, setLikesCount] = useState(0)
   const [interestsCount, setInterestsCount] = useState(0)
+  const [recentChats, setRecentChats] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
   const { toast } = useToast()
+
+  const [searchFilters, setSearchFilters] = useState({
+    gender: "",
+    ageMin: "",
+    ageMax: "",
+    religion: "",
+    location: "",
+  })
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -46,11 +55,9 @@ export default function DashboardPage() {
         return
       }
 
-      // Fetch current user profile
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
       if (profile) setCurrentUser(profile)
 
-      // Fetch new profile matches (opposite gender, recent profiles)
       const { data: matches } = await supabase
         .from("profiles")
         .select("*")
@@ -61,7 +68,6 @@ export default function DashboardPage() {
 
       if (matches) setNewMatches(matches)
 
-      // Fetch interest requests
       const { data: requests } = await supabase
         .from("interest_requests")
         .select("*, sender:sender_id(*)")
@@ -110,6 +116,32 @@ export default function DashboardPage() {
         .eq("receiver_id", user.id)
       setInterestsCount(interests || 0)
 
+      const { data: conversations } = await supabase
+        .from("conversations")
+        .select(
+          `
+          *,
+          participant1:profiles!conversations_participant1_id_fkey(*),
+          participant2:profiles!conversations_participant2_id_fkey(*)
+        `,
+        )
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+        .order("last_message_at", { ascending: false })
+        .limit(4)
+
+      if (conversations) {
+        const chatsWithOtherUser = conversations.map((conv: any) => {
+          const otherUser = conv.participant1.id === user.id ? conv.participant2 : conv.participant1
+          return {
+            id: conv.id,
+            other_user: otherUser,
+            last_message: conv.last_message,
+            last_message_at: conv.last_message_at,
+          }
+        })
+        setRecentChats(chatsWithOtherUser)
+      }
+
       setLoading(false)
     }
 
@@ -130,7 +162,6 @@ export default function DashboardPage() {
         title: "Request accepted!",
         description: "You have accepted the interest request",
       })
-      // Refresh requests
       const { data: requests } = await supabase
         .from("interest_requests")
         .select("*, sender:sender_id(*)")
@@ -164,7 +195,6 @@ export default function DashboardPage() {
         title: "Request denied",
         description: "You have denied the interest request",
       })
-      // Refresh requests
       const { data: requests } = await supabase
         .from("interest_requests")
         .select("*, sender:sender_id(*)")
@@ -209,7 +239,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Search Section */}
       <Card>
         <CardContent className="p-6">
           <Tabs defaultValue="advance" className="w-full">
@@ -224,8 +253,11 @@ export default function DashboardPage() {
                     <Heart className="h-4 w-4" />
                     I'm looking for
                   </Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Select
+                    value={searchFilters.gender}
+                    onValueChange={(value) => setSearchFilters({ ...searchFilters, gender: value })}
+                  >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Woman" />
                     </SelectTrigger>
                     <SelectContent>
@@ -237,15 +269,30 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <Label>aged</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="number" placeholder="22" className="w-20" />
+                    <Input
+                      type="number"
+                      placeholder="22"
+                      className="w-20"
+                      value={searchFilters.ageMin}
+                      onChange={(e) => setSearchFilters({ ...searchFilters, ageMin: e.target.value })}
+                    />
                     <span>to</span>
-                    <Input type="number" placeholder="36" className="w-20" />
+                    <Input
+                      type="number"
+                      placeholder="36"
+                      className="w-20"
+                      value={searchFilters.ageMax}
+                      onChange={(e) => setSearchFilters({ ...searchFilters, ageMax: e.target.value })}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>of religion</Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Select
+                    value={searchFilters.religion}
+                    onValueChange={(value) => setSearchFilters({ ...searchFilters, religion: value })}
+                  >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Please select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -257,8 +304,11 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>and living in</Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Select
+                    value={searchFilters.location}
+                    onValueChange={(value) => setSearchFilters({ ...searchFilters, location: value })}
+                  >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Please select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -269,7 +319,18 @@ export default function DashboardPage() {
                   </Select>
                 </div>
               </div>
-              <Button className="mt-4" onClick={() => router.push("/search")}>
+              <Button
+                className="mt-4"
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  if (searchFilters.gender) params.set("gender", searchFilters.gender)
+                  if (searchFilters.ageMin) params.set("ageMin", searchFilters.ageMin)
+                  if (searchFilters.ageMax) params.set("ageMax", searchFilters.ageMax)
+                  if (searchFilters.religion) params.set("religion", searchFilters.religion)
+                  if (searchFilters.location) params.set("location", searchFilters.location)
+                  router.push(`/search?${params.toString()}`)
+                }}
+              >
                 <Search className="mr-2 h-4 w-4" />
                 Search
               </Button>
@@ -288,9 +349,7 @@ export default function DashboardPage() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column */}
         <div className="space-y-6 lg:col-span-2">
-          {/* New Profile Matches */}
           <Card>
             <CardContent className="p-6">
               <div className="mb-4 flex items-center justify-between">
@@ -337,7 +396,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Interest Requests */}
           <Card>
             <CardContent className="p-6">
               <h2 className="mb-4 font-serif text-xl font-semibold">Interest request</h2>
@@ -604,9 +662,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-6">
-          {/* Profile Status */}
           <Card>
             <CardContent className="p-6">
               <div className="mb-4 flex items-center justify-between">
@@ -687,7 +743,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Plan Details */}
           <Card>
             <CardContent className="p-6">
               <h2 className="mb-4 font-serif text-xl font-semibold">Plan details</h2>
@@ -707,26 +762,38 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Recent Chat List */}
           <Card>
             <CardContent className="p-6">
               <h2 className="mb-4 font-serif text-xl font-semibold">Recent chat list</h2>
               <div className="space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
-                    <div className="relative">
-                      <Avatar>
-                        <AvatarImage src="/placeholder.svg" />
-                        <AvatarFallback>JA</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                {recentChats.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">No recent chats</p>
+                ) : (
+                  recentChats.map((chat) => (
+                    <div
+                      key={chat.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-muted/50"
+                      onClick={() => router.push("/dashboard/chat")}
+                    >
+                      <div className="relative">
+                        <Avatar>
+                          <AvatarImage src={chat.other_user.profile_photo || "/placeholder.svg"} />
+                          <AvatarFallback>
+                            {chat.other_user.first_name?.[0]}
+                            {chat.other_user.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="truncate font-medium">
+                          {chat.other_user.first_name} {chat.other_user.last_name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{chat.other_user.living_in}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="truncate font-medium">Julia Ann</p>
-                      <p className="truncate text-xs text-muted-foreground">London, United Kingdom</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

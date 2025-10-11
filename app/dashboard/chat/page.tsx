@@ -8,9 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Send } from "lucide-react"
+import { Send, MoreVertical, Ban, UserX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface Conversation {
   id: string
@@ -38,6 +39,8 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("")
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [isBlockedBy, setIsBlockedBy] = useState(false)
   const supabase = getSupabaseBrowserClient()
   const { toast } = useToast()
 
@@ -47,11 +50,11 @@ export default function ChatPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation && currentUser) {
       fetchMessages(selectedConversation.id)
       markMessagesAsRead(selectedConversation.id)
+      checkBlockStatus(selectedConversation.other_user.id)
 
-      // Subscribe to new messages
       const channel = supabase
         .channel(`conversation:${selectedConversation.id}`)
         .on(
@@ -73,7 +76,7 @@ export default function ChatPage() {
         supabase.removeChannel(channel)
       }
     }
-  }, [selectedConversation])
+  }, [selectedConversation, currentUser])
 
   const fetchCurrentUser = async () => {
     const {
@@ -110,7 +113,6 @@ export default function ChatPage() {
         (data || []).map(async (conv: any) => {
           const otherUser = conv.participant1.id === user.id ? conv.participant2 : conv.participant1
 
-          // Get unread count
           const { count } = await supabase
             .from("messages")
             .select("*", { count: "exact", head: true })
@@ -169,8 +171,72 @@ export default function ChatPage() {
       .eq("is_read", false)
   }
 
+  const checkBlockStatus = async (otherUserId: string) => {
+    if (!currentUser) return
+
+    const { data: blocked } = await supabase
+      .from("blocked_users")
+      .select("id")
+      .eq("blocker_id", currentUser.id)
+      .eq("blocked_id", otherUserId)
+      .single()
+
+    setIsBlocked(!!blocked)
+
+    const { data: blockedBy } = await supabase
+      .from("blocked_users")
+      .select("id")
+      .eq("blocker_id", otherUserId)
+      .eq("blocked_id", currentUser.id)
+      .single()
+
+    setIsBlockedBy(!!blockedBy)
+  }
+
+  const handleBlockUser = async () => {
+    if (!currentUser || !selectedConversation) return
+
+    if (isBlocked) {
+      const { error } = await supabase
+        .from("blocked_users")
+        .delete()
+        .eq("blocker_id", currentUser.id)
+        .eq("blocked_id", selectedConversation.other_user.id)
+
+      if (!error) {
+        setIsBlocked(false)
+        toast({
+          title: "User unblocked",
+          description: "You can now receive messages from this user",
+        })
+      }
+    } else {
+      const { error } = await supabase.from("blocked_users").insert({
+        blocker_id: currentUser.id,
+        blocked_id: selectedConversation.other_user.id,
+      })
+
+      if (!error) {
+        setIsBlocked(true)
+        toast({
+          title: "User blocked",
+          description: "This user can no longer send you messages",
+        })
+      }
+    }
+  }
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !currentUser) return
+
+    if (isBlockedBy) {
+      toast({
+        title: "Cannot send message",
+        description: "You have been blocked by this user",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       const { error } = await supabase.from("messages").insert({
@@ -182,7 +248,7 @@ export default function ChatPage() {
       if (error) throw error
 
       setNewMessage("")
-      fetchConversations() // Refresh to update last message
+      fetchConversations()
     } catch (error: any) {
       console.error("[v0] Error sending message:", error)
       toast({
@@ -203,7 +269,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-6">
-      {/* Chat List */}
       <Card className="w-full max-w-md">
         <CardContent className="p-0">
           <div className="border-b border-border p-4">
@@ -253,11 +318,9 @@ export default function ChatPage() {
         </CardContent>
       </Card>
 
-      {/* Chat Window */}
       {selectedConversation ? (
         <Card className="flex flex-1 flex-col">
           <CardContent className="flex flex-1 flex-col p-0">
-            {/* Chat Header */}
             <div className="flex items-center gap-3 border-b border-border p-4">
               <Avatar className="h-12 w-12">
                 <AvatarImage src={selectedConversation.other_user.profile_photo || "/placeholder.svg"} />
@@ -290,7 +353,7 @@ export default function ChatPage() {
               </div>
               <div className="flex gap-2">
                 {selectedConversation.other_user.membership_plan !== "free" && (
-                  <Badge className="bg-primary/10 text-primary">
+                  <Badge className="bg-primary/10 text-primary capitalize">
                     {selectedConversation.other_user.membership_plan} User
                   </Badge>
                 )}
@@ -301,12 +364,40 @@ export default function ChatPage() {
                 >
                   View full profile
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleBlockUser}>
+                      {isBlocked ? (
+                        <>
+                          <UserX className="mr-2 h-4 w-4" />
+                          Unblock User
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="mr-2 h-4 w-4" />
+                          Block User
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              {messages.length === 0 ? (
+              {isBlockedBy ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2">
+                  <Ban className="h-12 w-12 text-muted-foreground" />
+                  <p className="text-center text-muted-foreground">
+                    You have been blocked by this user and cannot send messages.
+                  </p>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2">
                   <div className="rounded-lg bg-[#ffe8ea] px-6 py-3 text-center">
                     <p className="font-medium text-primary">Start a new chat!!! now</p>
@@ -330,17 +421,17 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Message Input */}
             <div className="border-t border-border bg-[#d9b5b8]/20 p-4">
               <div className="flex gap-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                  placeholder="Type a message here..."
+                  placeholder={isBlockedBy ? "You cannot send messages" : "Type a message here..."}
                   className="flex-1"
+                  disabled={isBlockedBy}
                 />
-                <Button onClick={sendMessage} className="bg-primary hover:bg-primary/90">
+                <Button onClick={sendMessage} className="bg-primary hover:bg-primary/90" disabled={isBlockedBy}>
                   SEND <Send className="ml-2 h-4 w-4" />
                 </Button>
               </div>

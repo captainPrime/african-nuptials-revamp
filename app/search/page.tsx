@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Heart, Grid3x3, List } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 export default function SearchPage() {
@@ -21,8 +21,11 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [likedProfiles, setLikedProfiles] = useState<Set<string>>(new Set())
+  const [existingRequests, setExistingRequests] = useState<Set<string>>(new Set())
+  const [friendships, setFriendships] = useState<Set<string>>(new Set())
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   const [filters, setFilters] = useState({
@@ -38,6 +41,23 @@ export default function SearchPage() {
   })
 
   useEffect(() => {
+    const gender = searchParams.get("gender") || ""
+    const ageMin = searchParams.get("ageMin") || ""
+    const ageMax = searchParams.get("ageMax") || ""
+    const religion = searchParams.get("religion") || ""
+    const location = searchParams.get("location") || ""
+
+    setFilters((prev) => ({
+      ...prev,
+      gender,
+      ageMin,
+      ageMax,
+      religion,
+      location,
+    }))
+  }, [searchParams])
+
+  useEffect(() => {
     const fetchProfiles = async () => {
       const {
         data: { user },
@@ -48,7 +68,11 @@ export default function SearchPage() {
         if (profile) {
           setCurrentUser(profile)
 
-          // Fetch liked profiles
+          if (!filters.gender) {
+            const oppositeGender = profile.gender === "male" ? "female" : "male"
+            setFilters((prev) => ({ ...prev, gender: oppositeGender }))
+          }
+
           const { data: likes } = await supabase
             .from("profile_likes")
             .select("liked_profile_id")
@@ -57,17 +81,37 @@ export default function SearchPage() {
           if (likes) {
             setLikedProfiles(new Set(likes.map((like) => like.liked_profile_id)))
           }
+
+          const { data: allRequests } = await supabase
+            .from("interest_requests")
+            .select("sender_id, receiver_id, status")
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+
+          if (allRequests) {
+            const requestSet = new Set<string>()
+            const friendSet = new Set<string>()
+
+            allRequests.forEach((req) => {
+              const otherId = req.sender_id === user.id ? req.receiver_id : req.sender_id
+              requestSet.add(otherId)
+
+              if (req.status === "accepted") {
+                friendSet.add(otherId)
+              }
+            })
+
+            setExistingRequests(requestSet)
+            setFriendships(friendSet)
+          }
         }
       }
 
       let query = supabase.from("profiles").select("*").order("created_at", { ascending: false })
 
-      // Exclude current user
       if (user) {
         query = query.neq("id", user.id)
       }
 
-      // Apply filters
       if (filters.gender) {
         query = query.eq("gender", filters.gender)
       }
@@ -125,7 +169,6 @@ export default function SearchPage() {
     const isLiked = likedProfiles.has(profileId)
 
     if (isLiked) {
-      // Unlike
       const { error } = await supabase
         .from("profile_likes")
         .delete()
@@ -143,7 +186,6 @@ export default function SearchPage() {
         })
       }
     } else {
-      // Like
       const { error } = await supabase.from("profile_likes").insert({
         liker_id: currentUser.id,
         liked_profile_id: profileId,
@@ -163,6 +205,15 @@ export default function SearchPage() {
       toast({
         title: "Login required",
         description: "Please login to send interest requests",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (existingRequests.has(profileId)) {
+      toast({
+        title: "Request already exists",
+        description: "You have already sent or received an interest request from this profile",
         variant: "destructive",
       })
       return
@@ -189,6 +240,7 @@ export default function SearchPage() {
         })
       }
     } else {
+      setExistingRequests((prev) => new Set(prev).add(profileId))
       toast({
         title: "Interest sent!",
         description: "Your interest request has been sent successfully",
@@ -211,7 +263,6 @@ export default function SearchPage() {
       <main className="flex-1 bg-secondary/30 py-8">
         <div className="container mx-auto px-4">
           <div className="grid gap-6 lg:grid-cols-4">
-            {/* Filters Sidebar */}
             <Card className="h-fit lg:col-span-1">
               <CardContent className="space-y-6 p-6">
                 <div className="space-y-2">
@@ -219,7 +270,7 @@ export default function SearchPage() {
                     <Heart className="h-4 w-4" />I am looking for
                   </Label>
                   <Select value={filters.gender} onValueChange={(value) => setFilters({ ...filters, gender: value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="I'm looking for" />
                     </SelectTrigger>
                     <SelectContent>
@@ -233,7 +284,7 @@ export default function SearchPage() {
                   <Label>Age Range</Label>
                   <div className="flex gap-2">
                     <Select value={filters.ageMin} onValueChange={(value) => setFilters({ ...filters, ageMin: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Min" />
                       </SelectTrigger>
                       <SelectContent>
@@ -245,7 +296,7 @@ export default function SearchPage() {
                       </SelectContent>
                     </Select>
                     <Select value={filters.ageMax} onValueChange={(value) => setFilters({ ...filters, ageMax: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Max" />
                       </SelectTrigger>
                       <SelectContent>
@@ -265,7 +316,7 @@ export default function SearchPage() {
                     value={filters.religion}
                     onValueChange={(value) => setFilters({ ...filters, religion: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Religion" />
                     </SelectTrigger>
                     <SelectContent>
@@ -283,7 +334,7 @@ export default function SearchPage() {
                     value={filters.location}
                     onValueChange={(value) => setFilters({ ...filters, location: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
@@ -302,7 +353,7 @@ export default function SearchPage() {
                     value={filters.education}
                     onValueChange={(value) => setFilters({ ...filters, education: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select education" />
                     </SelectTrigger>
                     <SelectContent>
@@ -321,7 +372,7 @@ export default function SearchPage() {
                     value={filters.maritalStatus}
                     onValueChange={(value) => setFilters({ ...filters, maritalStatus: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -402,7 +453,6 @@ export default function SearchPage() {
               </CardContent>
             </Card>
 
-            {/* Results */}
             <div className="lg:col-span-3">
               <div className="mb-6 flex items-center justify-between">
                 <h1 className="font-serif text-2xl font-semibold">Showing {profiles.length} profiles</h1>
@@ -501,12 +551,25 @@ export default function SearchPage() {
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
-                              Chat now
-                            </Button>
-                            <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
-                              Send interest
-                            </Button>
+                            {friendships.has(profile.id) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}
+                              >
+                                Chat now
+                              </Button>
+                            )}
+                            {!existingRequests.has(profile.id) && (
+                              <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
+                                Send interest
+                              </Button>
+                            )}
+                            {existingRequests.has(profile.id) && !friendships.has(profile.id) && (
+                              <Button size="sm" variant="outline" disabled>
+                                Request Sent
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
                               More details
                             </Button>
@@ -579,12 +642,25 @@ export default function SearchPage() {
                               </Button>
                             </div>
                             <div className="mt-auto flex flex-wrap gap-2">
-                              <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
-                                Chat now
-                              </Button>
-                              <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
-                                Send interest
-                              </Button>
+                              {friendships.has(profile.id) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}
+                                >
+                                  Chat now
+                                </Button>
+                              )}
+                              {!existingRequests.has(profile.id) && (
+                                <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
+                                  Send interest
+                                </Button>
+                              )}
+                              {existingRequests.has(profile.id) && !friendships.has(profile.id) && (
+                                <Button size="sm" variant="outline" disabled>
+                                  Request Sent
+                                </Button>
+                              )}
                               <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
                                 More details
                               </Button>

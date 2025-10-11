@@ -34,12 +34,12 @@ export default function PublicProfilePage() {
         const { data: currentUserProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
         if (currentUserProfile) setCurrentUser(currentUserProfile)
 
-        // Check if interest request already exists
         const { data: existingRequest } = await supabase
           .from("interest_requests")
           .select("status")
-          .eq("sender_id", user.id)
-          .eq("receiver_id", params.id as string)
+          .or(
+            `and(sender_id.eq.${user.id},receiver_id.eq.${params.id}),and(sender_id.eq.${params.id},receiver_id.eq.${user.id})`,
+          )
           .single()
 
         if (existingRequest) {
@@ -99,6 +99,24 @@ export default function PublicProfilePage() {
 
     setSendingInterest(true)
     try {
+      const { data: existing } = await supabase
+        .from("interest_requests")
+        .select("id, status")
+        .or(
+          `and(sender_id.eq.${currentUser.id},receiver_id.eq.${params.id}),and(sender_id.eq.${params.id},receiver_id.eq.${currentUser.id})`,
+        )
+        .single()
+
+      if (existing) {
+        toast({
+          title: "Request already exists",
+          description: "An interest request already exists between you and this user",
+          variant: "destructive",
+        })
+        setSendingInterest(false)
+        return
+      }
+
       const { error } = await supabase.from("interest_requests").insert({
         sender_id: currentUser.id,
         receiver_id: params.id as string,
