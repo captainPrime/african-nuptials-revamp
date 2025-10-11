@@ -26,6 +26,9 @@ export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [newMatches, setNewMatches] = useState<Profile[]>([])
   const [interestRequests, setInterestRequests] = useState<InterestRequest[]>([])
+  const [sentRequests, setSentRequests] = useState<InterestRequest[]>([])
+  const [likesCount, setLikesCount] = useState(0)
+  const [interestsCount, setInterestsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const supabase = getSupabaseBrowserClient()
@@ -76,6 +79,36 @@ export default function DashboardPage() {
           })),
         )
       }
+
+      const { data: sent } = await supabase
+        .from("interest_requests")
+        .select("*, receiver:receiver_id(*)")
+        .eq("sender_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10)
+
+      if (sent) {
+        setSentRequests(
+          sent.map((req: any) => ({
+            id: req.id,
+            sender: req.receiver,
+            status: req.status,
+            created_at: req.created_at,
+          })),
+        )
+      }
+
+      const { count: likes } = await supabase
+        .from("profile_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("liked_profile_id", user.id)
+      setLikesCount(likes || 0)
+
+      const { count: interests } = await supabase
+        .from("interest_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+      setInterestsCount(interests || 0)
 
       setLoading(false)
     }
@@ -170,6 +203,9 @@ export default function DashboardPage() {
   const pendingRequests = interestRequests.filter((req) => req.status === "pending")
   const acceptedRequests = interestRequests.filter((req) => req.status === "accepted")
   const deniedRequests = interestRequests.filter((req) => req.status === "denied")
+  const pendingSent = sentRequests.filter((req) => req.status === "pending")
+  const acceptedSent = sentRequests.filter((req) => req.status === "accepted")
+  const deniedSent = sentRequests.filter((req) => req.status === "denied")
 
   return (
     <div className="space-y-6 p-6">
@@ -310,6 +346,7 @@ export default function DashboardPage() {
                   <TabsTrigger value="new">New requests</TabsTrigger>
                   <TabsTrigger value="accepted">Accept request</TabsTrigger>
                   <TabsTrigger value="denied">Denied request</TabsTrigger>
+                  <TabsTrigger value="sent">Sent requests</TabsTrigger>
                 </TabsList>
                 <TabsContent value="new" className="space-y-4">
                   {pendingRequests.length === 0 ? (
@@ -451,16 +488,116 @@ export default function DashboardPage() {
                               <h3 className="font-semibold">
                                 {request.sender.first_name} {request.sender.last_name}
                               </h3>
-                              <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
-                                {age && <span>Age: {age}</span>}
-                              </div>
                             </div>
                           </CardContent>
                         </Card>
                       )
                     })
                   )}
+                </TabsContent>
+                <TabsContent value="sent" className="space-y-4">
+                  <Tabs defaultValue="pending-sent" className="w-full">
+                    <TabsList>
+                      <TabsTrigger value="pending-sent">Pending</TabsTrigger>
+                      <TabsTrigger value="accepted-sent">Accepted</TabsTrigger>
+                      <TabsTrigger value="denied-sent">Denied</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="pending-sent" className="space-y-4">
+                      {pendingSent.length === 0 ? (
+                        <p className="py-8 text-center text-muted-foreground">No pending sent requests</p>
+                      ) : (
+                        pendingSent.map((request) => {
+                          const age = request.sender.date_of_birth
+                            ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
+                            : null
+                          return (
+                            <Card key={request.id}>
+                              <CardContent className="flex items-center gap-4 p-4">
+                                <Avatar className="h-20 w-20">
+                                  <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                  <AvatarFallback>
+                                    {request.sender.first_name?.[0]}
+                                    {request.sender.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <h3 className="font-semibold">
+                                    {request.sender.first_name} {request.sender.last_name}
+                                  </h3>
+                                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                    {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
+                                    {age && <span>Age: {age}</span>}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="mt-2 bg-transparent"
+                                    onClick={() => router.push(`/profile/${request.sender.id}`)}
+                                  >
+                                    View full profile
+                                  </Button>
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    Sent on: {new Date(request.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary">Pending</Badge>
+                              </CardContent>
+                            </Card>
+                          )
+                        })
+                      )}
+                    </TabsContent>
+                    <TabsContent value="accepted-sent" className="space-y-4">
+                      {acceptedSent.length === 0 ? (
+                        <p className="py-8 text-center text-muted-foreground">No accepted sent requests</p>
+                      ) : (
+                        acceptedSent.map((request) => (
+                          <Card key={request.id}>
+                            <CardContent className="flex items-center gap-4 p-4">
+                              <Avatar className="h-20 w-20">
+                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                <AvatarFallback>
+                                  {request.sender.first_name?.[0]}
+                                  {request.sender.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h3 className="font-semibold">
+                                  {request.sender.first_name} {request.sender.last_name}
+                                </h3>
+                              </div>
+                              <Badge className="bg-green-100 text-green-700">Accepted</Badge>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </TabsContent>
+                    <TabsContent value="denied-sent" className="space-y-4">
+                      {deniedSent.length === 0 ? (
+                        <p className="py-8 text-center text-muted-foreground">No denied sent requests</p>
+                      ) : (
+                        deniedSent.map((request) => (
+                          <Card key={request.id}>
+                            <CardContent className="flex items-center gap-4 p-4">
+                              <Avatar className="h-20 w-20">
+                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                <AvatarFallback>
+                                  {request.sender.first_name?.[0]}
+                                  {request.sender.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h3 className="font-semibold">
+                                  {request.sender.first_name} {request.sender.last_name}
+                                </h3>
+                              </div>
+                              <Badge variant="destructive">Denied</Badge>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -532,14 +669,14 @@ export default function DashboardPage() {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-primary">
                     <Heart className="h-4 w-4 fill-current" />
-                    <span className="text-2xl font-bold">{currentUser?.likes_received || 12}</span>
+                    <span className="text-2xl font-bold">{likesCount}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Likes</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-primary">
                     <Heart className="h-4 w-4" />
-                    <span className="text-2xl font-bold">{currentUser?.interests_received || 4}</span>
+                    <span className="text-2xl font-bold">{interestsCount}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Interests</p>
                 </div>

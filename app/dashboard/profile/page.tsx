@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation"
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [likesCount, setLikesCount] = useState(0)
+  const [interestsCount, setInterestsCount] = useState(0)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
 
@@ -24,6 +26,18 @@ export default function ProfilePage() {
       if (user) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
         if (data) setProfile(data)
+
+        const { count: likes } = await supabase
+          .from("profile_likes")
+          .select("*", { count: "exact", head: true })
+          .eq("liked_profile_id", user.id)
+        setLikesCount(likes || 0)
+
+        const { count: interests } = await supabase
+          .from("interest_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("receiver_id", user.id)
+        setInterestsCount(interests || 0)
       }
       setLoading(false)
     }
@@ -58,15 +72,11 @@ export default function ProfilePage() {
       <Card className="overflow-hidden">
         <div
           className="relative h-32"
-          style={
-            profile.cover_photo
-              ? {
-                  backgroundImage: `url(${profile.cover_photo})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : { background: "linear-gradient(to right, var(--primary), hsl(var(--primary) / 0.8))" }
-          }
+          style={{
+            backgroundImage: `url(${profile.cover_photo || "/default-cover.png"})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
         >
           <Button
             size="icon"
@@ -178,7 +188,7 @@ export default function ProfilePage() {
                     <Heart className="h-5 w-5 text-red-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{profile.likes_received}</p>
+                    <p className="text-2xl font-bold">{likesCount}</p>
                     <p className="text-xs text-muted-foreground">Likes</p>
                   </div>
                 </div>
@@ -188,7 +198,7 @@ export default function ProfilePage() {
                     <Eye className="h-5 w-5 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{profile.profile_views}</p>
+                    <p className="text-2xl font-bold">{profile.profile_views || 0}</p>
                     <p className="text-xs text-muted-foreground">Views</p>
                   </div>
                 </div>
@@ -198,7 +208,7 @@ export default function ProfilePage() {
                     <Users className="h-5 w-5 text-pink-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{profile.interests_received}</p>
+                    <p className="text-2xl font-bold">{interestsCount}</p>
                     <p className="text-xs text-muted-foreground">Interests</p>
                   </div>
                 </div>
@@ -208,7 +218,7 @@ export default function ProfilePage() {
                     <MousePointer className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{profile.clicks_received}</p>
+                    <p className="text-2xl font-bold">{profile.clicks_received || 0}</p>
                     <p className="text-xs text-muted-foreground">Clicks</p>
                   </div>
                 </div>

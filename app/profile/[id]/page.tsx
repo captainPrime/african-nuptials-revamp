@@ -62,9 +62,16 @@ export default function PublicProfilePage() {
       if (data) {
         setProfile(data)
         // Increment profile views
-        await supabase.from("profile_views").insert({
-          profile_id: params.id as string,
-        })
+        if (user) {
+          await supabase.from("profile_views").insert({
+            profile_id: params.id as string,
+            viewer_id: user.id,
+          })
+        } else {
+          await supabase.from("profile_views").insert({
+            profile_id: params.id as string,
+          })
+        }
       }
       setLoading(false)
     }
@@ -157,6 +164,37 @@ export default function PublicProfilePage() {
     }
   }
 
+  const maskPhone = (phone: string) => {
+    if (!phone) return ""
+    return phone.slice(0, 3) + "****" + phone.slice(-2)
+  }
+
+  const maskEmail = (email: string) => {
+    if (!email) return ""
+    const [name, domain] = email.split("@")
+    return name.slice(0, 2) + "****@" + domain
+  }
+
+  const canViewPhone = () => {
+    if (currentUser?.id === profile?.id) return true
+    if (profile?.phone_visibility === "all_users") return true
+    if (profile?.phone_visibility === "friends") {
+      // TODO: Check if users are friends
+      return false
+    }
+    return false
+  }
+
+  const canViewEmail = () => {
+    if (currentUser?.id === profile?.id) return true
+    if (profile?.email_visibility === "all_users") return true
+    if (profile?.email_visibility === "friends") {
+      // TODO: Check if users are friends
+      return false
+    }
+    return false
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -184,7 +222,14 @@ export default function PublicProfilePage() {
         <div className="container mx-auto max-w-5xl px-4">
           {/* Profile Header */}
           <Card className="mb-6 overflow-hidden">
-            <div className="relative h-48 bg-gradient-to-r from-primary to-primary/80" />
+            <div
+              className="relative h-48"
+              style={{
+                backgroundImage: `url(${profile.cover_photo || "/default-cover.png"})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
             <CardContent className="relative px-6 pb-6">
               <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end">
                 <Avatar className="h-40 w-40 -mt-20 border-4 border-card">
@@ -396,6 +441,18 @@ export default function PublicProfilePage() {
                       <div>
                         <dt className="font-medium text-muted-foreground">Community:</dt>
                         <dd className="font-medium">{profile.community}</dd>
+                      </div>
+                    )}
+                    {profile.phone && (
+                      <div>
+                        <dt className="font-medium text-muted-foreground">Phone:</dt>
+                        <dd className="font-medium">{canViewPhone() ? profile.phone : maskPhone(profile.phone)}</dd>
+                      </div>
+                    )}
+                    {profile.email && (
+                      <div>
+                        <dt className="font-medium text-muted-foreground">Email:</dt>
+                        <dd className="font-medium">{canViewEmail() ? profile.email : maskEmail(profile.email)}</dd>
                       </div>
                     )}
                   </dl>
