@@ -56,7 +56,18 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Profile Header Card */}
       <Card className="overflow-hidden">
-        <div className="relative h-32 bg-gradient-to-r from-primary to-primary/80">
+        <div
+          className="relative h-32"
+          style={
+            profile.cover_photo
+              ? {
+                  backgroundImage: `url(${profile.cover_photo})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : { background: "linear-gradient(to right, var(--primary), hsl(var(--primary) / 0.8))" }
+          }
+        >
           <Button
             size="icon"
             variant="ghost"

@@ -41,6 +41,7 @@ export interface Profile {
   about_me?: string
   partner_expectations?: string
   profile_photo?: string
+  cover_photo?: string
   photo_gallery?: string[]
   facebook_url?: string
   twitter_url?: string
@@ -73,4 +74,18 @@ export interface SignupFormData {
   religion: string
   community: string
   living_in: string
+}
+
+export type InterestRequestStatus = "pending" | "accepted" | "denied"
+
+export interface InterestRequest {
+  id: string
+  sender_id: string
+  receiver_id: string
+  status: InterestRequestStatus
+  message?: string
+  created_at: string
+  updated_at: string
+  sender?: Profile
+  receiver?: Profile
 }

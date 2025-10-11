@@ -11,15 +11,41 @@ import { Heart, MessageSquare, Share2, Facebook, Twitter, Instagram, Linkedin, M
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useParams } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PublicProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sendingInterest, setSendingInterest] = useState(false)
+  const [interestStatus, setInterestStatus] = useState<string | null>(null)
   const supabase = getSupabaseBrowserClient()
   const params = useParams()
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: currentUserProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+        if (currentUserProfile) setCurrentUser(currentUserProfile)
+
+        // Check if interest request already exists
+        const { data: existingRequest } = await supabase
+          .from("interest_requests")
+          .select("status")
+          .eq("sender_id", user.id)
+          .eq("receiver_id", params.id as string)
+          .single()
+
+        if (existingRequest) {
+          setInterestStatus(existingRequest.status)
+        }
+      }
+
       const { data } = await supabase.from("profiles").select("*").eq("id", params.id).single()
       if (data) {
         setProfile(data)
@@ -32,6 +58,52 @@ export default function PublicProfilePage() {
     }
     fetchProfile()
   }, [supabase, params.id])
+
+  const handleSendInterest = async () => {
+    if (!currentUser) {
+      toast({
+        title: "Login required",
+        description: "Please login to send interest requests",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (currentUser.gender === profile?.gender) {
+      toast({
+        title: "Cannot send interest",
+        description: "You can only send interest to opposite gender profiles",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSendingInterest(true)
+    try {
+      const { error } = await supabase.from("interest_requests").insert({
+        sender_id: currentUser.id,
+        receiver_id: params.id as string,
+        status: "pending",
+      })
+
+      if (error) throw error
+
+      setInterestStatus("pending")
+      toast({
+        title: "Interest sent!",
+        description: "Your interest request has been sent successfully",
+      })
+    } catch (error: any) {
+      console.error("[v0] Error sending interest:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send interest request",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingInterest(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -50,6 +122,7 @@ export default function PublicProfilePage() {
   }
 
   const age = profile.date_of_birth ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() : null
+  const isOwnProfile = currentUser?.id === profile.id
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -94,17 +167,32 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button size="icon" variant="outline">
-                    <Heart className="h-5 w-5" />
-                  </Button>
-                  <Button size="icon" variant="outline">
-                    <MessageSquare className="h-5 w-5" />
-                  </Button>
-                  <Button size="icon" variant="outline">
-                    <Share2 className="h-5 w-5" />
-                  </Button>
-                </div>
+                {!isOwnProfile && (
+                  <div className="flex gap-2">
+                    {interestStatus === "pending" ? (
+                      <Button disabled className="bg-muted">
+                        Interest Sent
+                      </Button>
+                    ) : interestStatus === "accepted" ? (
+                      <Button disabled className="bg-green-100 text-green-700">
+                        Interest Accepted
+                      </Button>
+                    ) : (
+                      <Button onClick={handleSendInterest} disabled={sendingInterest}>
+                        {sendingInterest ? "Sending..." : "Send Interest"}
+                      </Button>
+                    )}
+                    <Button size="icon" variant="outline">
+                      <Heart className="h-5 w-5" />
+                    </Button>
+                    <Button size="icon" variant="outline">
+                      <MessageSquare className="h-5 w-5" />
+                    </Button>
+                    <Button size="icon" variant="outline">
+                      <Share2 className="h-5 w-5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

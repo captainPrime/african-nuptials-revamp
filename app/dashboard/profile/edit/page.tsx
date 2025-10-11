@@ -58,6 +58,7 @@ export default function EditProfilePage() {
   })
 
   const [profilePhoto, setProfilePhoto] = useState<string>("")
+  const [coverPhoto, setCoverPhoto] = useState<string>("")
   const [photoGallery, setPhotoGallery] = useState<string[]>([])
   const [hobbies, setHobbies] = useState<string[]>([])
   const [newHobby, setNewHobby] = useState("")
@@ -103,6 +104,7 @@ export default function EditProfilePage() {
             linkedin_url: data.linkedin_url || "",
           })
           setProfilePhoto(data.profile_photo || "")
+          setCoverPhoto(data.cover_photo || "")
           setPhotoGallery(data.photo_gallery || [])
           setHobbies(data.hobbies || [])
         }
@@ -129,6 +131,10 @@ export default function EditProfilePage() {
 
   const handleProfilePhotoUpload = (url: string) => {
     setProfilePhoto(url)
+  }
+
+  const handleCoverPhotoUpload = (url: string) => {
+    setCoverPhoto(url)
   }
 
   const handleGalleryPhotoUpload = (url: string) => {
@@ -173,6 +179,7 @@ export default function EditProfilePage() {
         .update({
           ...formData,
           profile_photo: profilePhoto,
+          cover_photo: coverPhoto,
           photo_gallery: photoGallery,
           hobbies,
           profile_completion: profileCompletion,
@@ -225,6 +232,33 @@ export default function EditProfilePage() {
               <p className="text-sm font-medium">Upload a new photo</p>
               <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max size 2MB</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cover Photo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cover Photo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {coverPhoto ? (
+              <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                <img src={coverPhoto || "/placeholder.svg"} alt="Cover" className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="flex h-48 w-full items-center justify-center rounded-lg bg-muted">
+                <p className="text-sm text-muted-foreground">No cover photo</p>
+              </div>
+            )}
+            <ProfilePhotoUpload
+              currentPhoto={coverPhoto}
+              onUploadComplete={handleCoverPhotoUpload}
+              initials=""
+              buttonText="Upload Cover Photo"
+            />
+            <p className="text-xs text-muted-foreground">Recommended size: 1200x400px. Max size 2MB</p>
           </div>
         </CardContent>
       </Card>
@@ -410,12 +444,21 @@ export default function EditProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="education">Education</Label>
-              <Input
-                id="education"
-                placeholder="e.g., Bachelor's Degree"
-                value={formData.education}
-                onChange={(e) => handleInputChange("education", e.target.value)}
-              />
+              <Select value={formData.education} onValueChange={(value) => handleInputChange("education", value)}>
+                <SelectTrigger id="education">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high-school">High School</SelectItem>
+                  <SelectItem value="associate">Associate Degree</SelectItem>
+                  <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
+                  <SelectItem value="master">Master's Degree</SelectItem>
+                  <SelectItem value="doctorate">Doctorate/PhD</SelectItem>
+                  <SelectItem value="diploma">Diploma</SelectItem>
+                  <SelectItem value="certificate">Certificate</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="profession">Profession</Label>
