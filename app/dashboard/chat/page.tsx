@@ -229,6 +229,15 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !currentUser) return
 
+    if (isBlocked) {
+      toast({
+        title: "Cannot send message",
+        description: "You have blocked this user. Unblock them to send messages.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (isBlockedBy) {
       toast({
         title: "Cannot send message",
@@ -427,11 +436,21 @@ export default function ChatPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                  placeholder={isBlockedBy ? "You cannot send messages" : "Type a message here..."}
+                  placeholder={
+                    isBlockedBy
+                      ? "You cannot send messages"
+                      : isBlocked
+                        ? "Unblock to send messages"
+                        : "Type a message here..."
+                  }
                   className="flex-1"
-                  disabled={isBlockedBy}
+                  disabled={isBlockedBy || isBlocked}
                 />
-                <Button onClick={sendMessage} className="bg-primary hover:bg-primary/90" disabled={isBlockedBy}>
+                <Button
+                  onClick={sendMessage}
+                  className="bg-primary hover:bg-primary/90"
+                  disabled={isBlockedBy || isBlocked}
+                >
                   SEND <Send className="ml-2 h-4 w-4" />
                 </Button>
               </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { HeroSearch } from "@/components/hero-search"
@@ -12,6 +12,12 @@ export default function HomePage() {
   const [showSignup, setShowSignup] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+
+  useEffect(() => {
+    const handleShowLogin = () => setShowLogin(true)
+    window.addEventListener("show-login-modal", handleShowLogin)
+    return () => window.removeEventListener("show-login-modal", handleShowLogin)
+  }, [])
 
   const handleForgotPassword = () => {
     setShowLogin(false)

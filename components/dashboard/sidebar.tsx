@@ -7,16 +7,8 @@ import { LayoutDashboard, User, Heart, MessageSquare, CreditCard, Settings, LogO
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: User, label: "Profile", href: "/dashboard/profile" },
-  { icon: Heart, label: "Interests", href: "/dashboard/interests" },
-  { icon: Users, label: "Friends", href: "/dashboard/friends" },
-  { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
-  { icon: CreditCard, label: "Plan", href: "/dashboard/plan" },
-  { icon: Settings, label: "Setting", href: "/dashboard/settings" },
-]
+import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react"
 
 interface DashboardSidebarProps {
   isMobileOpen?: boolean
@@ -27,11 +19,61 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
   const pathname = usePathname()
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: conversations } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+
+      if (!conversations) return
+
+      let total = 0
+      for (const conv of conversations) {
+        const { count } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("conversation_id", conv.id)
+          .eq("is_read", false)
+          .neq("sender_id", user.id)
+
+        total += count || 0
+      }
+
+      setUnreadCount(total)
+    }
+
+    fetchUnreadCount()
+
+    const channel = supabase
+      .channel("unread-messages")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        fetchUnreadCount()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/")
     router.refresh()
+  }
+
+  const handleLinkClick = () => {
+    if (onMobileClose) {
+      onMobileClose()
+    }
   }
 
   return (
@@ -77,10 +119,12 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
             {menuItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
+              const showBadge = item.href === "/dashboard/chat" && unreadCount > 0
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={handleLinkClick}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
@@ -90,6 +134,11 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
                 >
                   <Icon className="h-5 w-5" />
                   {item.label}
+                  {showBadge && (
+                    <Badge className="ml-auto h-5 min-w-5 rounded-full bg-green-500 px-1.5 text-xs">
+                      {unreadCount}
+                    </Badge>
+                  )}
                 </Link>
               )
             })}
@@ -109,3 +158,13 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
     </>
   )
 }
+
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: User, label: "Profile", href: "/dashboard/profile" },
+  { icon: Heart, label: "Interests", href: "/dashboard/interests" },
+  { icon: Users, label: "Friends", href: "/dashboard/friends" },
+  { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
+  { icon: CreditCard, label: "Plan", href: "/dashboard/plan" },
+  { icon: Settings, label: "Setting", href: "/dashboard/settings" },
+]

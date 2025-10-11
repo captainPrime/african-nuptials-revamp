@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export function HeroSearch() {
   const [lookingFor, setLookingFor] = useState("woman")
@@ -11,10 +13,29 @@ export function HeroSearch() {
   const [ageTo, setAgeTo] = useState("36")
   const [religion, setReligion] = useState("")
   const [location, setLocation] = useState("")
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const router = useRouter()
+  const supabase = getSupabaseBrowserClient()
 
-  const handleSearch = () => {
-    console.log("[v0] Search params:", { lookingFor, ageFrom, ageTo, religion, location })
-    // TODO: Implement search functionality
+  const handleSearch = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      // Trigger login modal
+      window.dispatchEvent(new CustomEvent("show-login-modal"))
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (lookingFor) params.set("gender", lookingFor)
+    if (ageFrom) params.set("ageMin", ageFrom)
+    if (ageTo) params.set("ageMax", ageTo)
+    if (religion) params.set("religion", religion)
+    if (location) params.set("location", location)
+
+    router.push(`/search?${params.toString()}`)
   }
 
   return (

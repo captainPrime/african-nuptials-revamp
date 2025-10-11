@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Globe, Menu, LayoutDashboard, User, Heart, MessageSquare, CreditCard, Settings, LogOut } from "lucide-react"
+import {
+  Globe,
+  Menu,
+  LayoutDashboard,
+  User,
+  Heart,
+  MessageSquare,
+  CreditCard,
+  Settings,
+  LogOut,
+  Users,
+} from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Profile } from "@/lib/types/profile"
 import {
@@ -13,12 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: User, label: "Profile", href: "/dashboard/profile" },
   { icon: Heart, label: "Interests", href: "/dashboard/interests" },
+  { icon: Users, label: "Friends", href: "/dashboard/friends" },
   { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
   { icon: CreditCard, label: "Plan", href: "/dashboard/plan" },
   { icon: Settings, label: "Setting", href: "/dashboard/settings" },
@@ -32,6 +44,12 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const getPageTitle = () => {
+    const currentItem = menuItems.find((item) => item.href === pathname)
+    return currentItem?.label || "Dashboard"
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -59,7 +77,7 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMobileMenuToggle}>
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="font-serif text-xl font-semibold">Profile</h1>
+          <h1 className="font-serif text-xl font-semibold">{getPageTitle()}</h1>
         </div>
 
         <div className="flex items-center gap-4">

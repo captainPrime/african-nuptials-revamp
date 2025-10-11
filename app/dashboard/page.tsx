@@ -44,6 +44,8 @@ export default function DashboardPage() {
     location: "",
   })
 
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0)
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       const {
@@ -130,16 +132,31 @@ export default function DashboardPage() {
         .limit(4)
 
       if (conversations) {
-        const chatsWithOtherUser = conversations.map((conv: any) => {
-          const otherUser = conv.participant1.id === user.id ? conv.participant2 : conv.participant1
-          return {
-            id: conv.id,
-            other_user: otherUser,
-            last_message: conv.last_message,
-            last_message_at: conv.last_message_at,
-          }
-        })
+        let totalUnread = 0
+        const chatsWithOtherUser = await Promise.all(
+          conversations.map(async (conv: any) => {
+            const otherUser = conv.participant1.id === user.id ? conv.participant2 : conv.participant1
+
+            const { count } = await supabase
+              .from("messages")
+              .select("*", { count: "exact", head: true })
+              .eq("conversation_id", conv.id)
+              .eq("is_read", false)
+              .neq("sender_id", user.id)
+
+            totalUnread += count || 0
+
+            return {
+              id: conv.id,
+              other_user: otherUser,
+              last_message: conv.last_message,
+              last_message_at: conv.last_message_at,
+              unread_count: count || 0,
+            }
+          }),
+        )
         setRecentChats(chatsWithOtherUser)
+        setTotalUnreadMessages(totalUnread)
       }
 
       setLoading(false)
@@ -364,7 +381,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               {newMatches.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="flex gap-4 overflow-x-auto pb-4 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-4">
                   {newMatches.slice(currentMatchIndex, currentMatchIndex + 4).map((match) => {
                     const age = match.date_of_birth
                       ? new Date().getFullYear() - new Date(match.date_of_birth).getFullYear()
@@ -372,7 +389,7 @@ export default function DashboardPage() {
                     return (
                       <Card
                         key={match.id}
-                        className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg"
+                        className="group min-w-[200px] cursor-pointer overflow-hidden transition-shadow hover:shadow-lg md:min-w-0"
                         onClick={() => router.push(`/profile/${match.id}`)}
                       >
                         <div className="relative aspect-[3/4]">
@@ -791,6 +808,11 @@ export default function DashboardPage() {
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{chat.other_user.living_in}</p>
                       </div>
+                      {chat.unread_count > 0 && (
+                        <Badge className="h-5 min-w-5 rounded-full bg-green-500 px-1.5 text-xs">
+                          {chat.unread_count}
+                        </Badge>
+                      )}
                     </div>
                   ))
                 )}

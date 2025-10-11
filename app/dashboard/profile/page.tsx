@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Profile } from "@/lib/types/profile"
@@ -15,6 +17,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [likesCount, setLikesCount] = useState(0)
   const [interestsCount, setInterestsCount] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
 
@@ -43,6 +46,42 @@ export default function ProfilePage() {
     }
     fetchProfile()
   }, [supabase])
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !profile) return
+
+    setIsUploading(true)
+
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`
+      const filePath = `gallery/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("profile-photos").upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-photos").getPublicUrl(filePath)
+
+      const updatedGallery = [...(profile.photo_gallery || []), publicUrl]
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ photo_gallery: updatedGallery })
+        .eq("id", profile.id)
+
+      if (updateError) throw updateError
+
+      setProfile({ ...profile, photo_gallery: updatedGallery })
+    } catch (error: any) {
+      console.error("[v0] Error uploading photo:", error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -245,23 +284,37 @@ export default function ProfilePage() {
                       />
                     </div>
                   ))}
-                  <button className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5">
+                  <label className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={isUploading}
+                    />
                     <div className="text-center">
                       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <span className="text-xl">+</span>
+                        <span className="text-xl">{isUploading ? "..." : "+"}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">Upload Image</p>
                     </div>
-                  </button>
+                  </label>
                 </>
               ) : (
                 <div className="col-span-2 flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border">
-                  <div className="text-center">
+                  <label className="cursor-pointer text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={isUploading}
+                    />
                     <p className="text-sm text-muted-foreground">No photos yet</p>
-                    <Button size="sm" variant="link" className="mt-2">
-                      Upload photos
+                    <Button size="sm" variant="link" className="mt-2" type="button">
+                      {isUploading ? "Uploading..." : "Upload photos"}
                     </Button>
-                  </div>
+                  </label>
                 </div>
               )}
             </div>
