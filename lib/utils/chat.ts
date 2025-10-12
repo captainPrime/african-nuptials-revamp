@@ -55,3 +55,33 @@ export async function getOrCreateConversation(userId1: string, userId2: string):
 
   return newConv.id
 }
+
+export async function shareProfile(profileId: string, profileName: string) {
+  const url = `${window.location.origin}/profile/${profileId}`
+  const shareData = {
+    title: `${profileName} - African Nuptials`,
+    text: `Check out ${profileName}'s profile on African Nuptials`,
+    url: url,
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData)
+      return { success: true }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("[v0] Error sharing:", error)
+      }
+      return { success: false, error }
+    }
+  } else {
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(url)
+      return { success: true, fallback: true }
+    } catch (error) {
+      console.error("[v0] Error copying to clipboard:", error)
+      return { success: false, error }
+    }
+  }
+}

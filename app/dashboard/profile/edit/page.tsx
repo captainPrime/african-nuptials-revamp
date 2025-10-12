@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { ProfilePhotoUpload } from "@/components/profile-photo-upload"
 import { PhotoUpload } from "@/components/photo-upload"
+import { HOBBIES_LIST } from "@/lib/constants/hobbies"
+import { MultiSelect } from "@/components/ui/multi-select"
 
 export default function EditProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -61,7 +63,6 @@ export default function EditProfilePage() {
   const [coverPhoto, setCoverPhoto] = useState<string>("")
   const [photoGallery, setPhotoGallery] = useState<string[]>([])
   const [hobbies, setHobbies] = useState<string[]>([])
-  const [newHobby, setNewHobby] = useState("")
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -118,50 +119,6 @@ export default function EditProfilePage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleAddHobby = () => {
-    if (newHobby.trim() && !hobbies.includes(newHobby.trim())) {
-      setHobbies([...hobbies, newHobby.trim()])
-      setNewHobby("")
-    }
-  }
-
-  const handleRemoveHobby = (hobby: string) => {
-    setHobbies(hobbies.filter((h) => h !== hobby))
-  }
-
-  const handleProfilePhotoUpload = (url: string) => {
-    setProfilePhoto(url)
-  }
-
-  const handleCoverPhotoUpload = (url: string) => {
-    setCoverPhoto(url)
-  }
-
-  const handleGalleryPhotoUpload = (url: string) => {
-    setPhotoGallery((prev) => [...prev, url])
-  }
-
-  const calculateProfileCompletion = () => {
-    const fields = [
-      formData.first_name,
-      formData.last_name,
-      formData.phone,
-      formData.date_of_birth,
-      formData.religion,
-      formData.community,
-      formData.living_in,
-      formData.height,
-      formData.education,
-      formData.profession,
-      formData.about_me,
-      profilePhoto,
-      hobbies.length > 0,
-      photoGallery.length > 0,
-    ]
-    const filledFields = fields.filter((field) => field).length
-    return Math.round((filledFields / fields.length) * 100)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -206,6 +163,30 @@ export default function EditProfilePage() {
     }
   }
 
+  const calculateProfileCompletion = () => {
+    const fields = [
+      formData.first_name,
+      formData.last_name,
+      formData.phone,
+      formData.date_of_birth,
+      formData.religion,
+      formData.community,
+      formData.living_in,
+      formData.height,
+      formData.weight,
+      formData.body_type,
+      formData.complexion,
+      formData.education,
+      formData.profession,
+      formData.about_me,
+      profilePhoto,
+      hobbies.length > 0,
+      photoGallery.length > 0,
+    ]
+    const filledFields = fields.filter((field) => field).length
+    return Math.round((filledFields / fields.length) * 100)
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -225,7 +206,7 @@ export default function EditProfilePage() {
           <div className="flex items-center gap-6">
             <ProfilePhotoUpload
               currentPhoto={profilePhoto}
-              onUploadComplete={handleProfilePhotoUpload}
+              onUploadComplete={setProfilePhoto}
               initials={`${formData.first_name?.[0] || ""}${formData.last_name?.[0] || ""}`}
             />
             <div>
@@ -254,7 +235,7 @@ export default function EditProfilePage() {
             )}
             <ProfilePhotoUpload
               currentPhoto={coverPhoto}
-              onUploadComplete={handleCoverPhotoUpload}
+              onUploadComplete={setCoverPhoto}
               initials=""
               buttonText="Upload Cover Photo"
             />
@@ -269,7 +250,7 @@ export default function EditProfilePage() {
           <CardTitle>Photo Gallery</CardTitle>
         </CardHeader>
         <CardContent>
-          <PhotoUpload currentPhotos={photoGallery} onUploadComplete={handleGalleryPhotoUpload} maxFiles={6} />
+          <PhotoUpload currentPhotos={photoGallery} onUploadComplete={setPhotoGallery} maxFiles={6} />
         </CardContent>
       </Card>
 
@@ -385,21 +366,83 @@ export default function EditProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="height">Height</Label>
-              <Input
-                id="height"
-                placeholder="e.g., 5'8&quot;"
-                value={formData.height}
-                onChange={(e) => handleInputChange("height", e.target.value)}
-              />
+              <Select value={formData.height} onValueChange={(value) => handleInputChange("height", value)}>
+                <SelectTrigger id="height" className="w-full">
+                  <SelectValue placeholder="Select height" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="4'0&quot; (122cm)">4'0" (122cm)</SelectItem>
+                  <SelectItem value="4'1&quot; (124cm)">4'1" (124cm)</SelectItem>
+                  <SelectItem value="4'2&quot; (127cm)">4'2" (127cm)</SelectItem>
+                  <SelectItem value="4'3&quot; (130cm)">4'3" (130cm)</SelectItem>
+                  <SelectItem value="4'4&quot; (132cm)">4'4" (132cm)</SelectItem>
+                  <SelectItem value="4'5&quot; (135cm)">4'5" (135cm)</SelectItem>
+                  <SelectItem value="4'6&quot; (137cm)">4'6" (137cm)</SelectItem>
+                  <SelectItem value="4'7&quot; (140cm)">4'7" (140cm)</SelectItem>
+                  <SelectItem value="4'8&quot; (142cm)">4'8" (142cm)</SelectItem>
+                  <SelectItem value="4'9&quot; (145cm)">4'9" (145cm)</SelectItem>
+                  <SelectItem value="4'10&quot; (147cm)">4'10" (147cm)</SelectItem>
+                  <SelectItem value="4'11&quot; (150cm)">4'11" (150cm)</SelectItem>
+                  <SelectItem value="5'0&quot; (152cm)">5'0" (152cm)</SelectItem>
+                  <SelectItem value="5'1&quot; (155cm)">5'1" (155cm)</SelectItem>
+                  <SelectItem value="5'2&quot; (157cm)">5'2" (157cm)</SelectItem>
+                  <SelectItem value="5'3&quot; (160cm)">5'3" (160cm)</SelectItem>
+                  <SelectItem value="5'4&quot; (163cm)">5'4" (163cm)</SelectItem>
+                  <SelectItem value="5'5&quot; (165cm)">5'5" (165cm)</SelectItem>
+                  <SelectItem value="5'6&quot; (168cm)">5'6" (168cm)</SelectItem>
+                  <SelectItem value="5'7&quot; (170cm)">5'7" (170cm)</SelectItem>
+                  <SelectItem value="5'8&quot; (173cm)">5'8" (173cm)</SelectItem>
+                  <SelectItem value="5'9&quot; (175cm)">5'9" (175cm)</SelectItem>
+                  <SelectItem value="5'10&quot; (178cm)">5'10" (178cm)</SelectItem>
+                  <SelectItem value="5'11&quot; (180cm)">5'11" (180cm)</SelectItem>
+                  <SelectItem value="6'0&quot; (183cm)">6'0" (183cm)</SelectItem>
+                  <SelectItem value="6'1&quot; (185cm)">6'1" (185cm)</SelectItem>
+                  <SelectItem value="6'2&quot; (188cm)">6'2" (188cm)</SelectItem>
+                  <SelectItem value="6'3&quot; (191cm)">6'3" (191cm)</SelectItem>
+                  <SelectItem value="6'4&quot; (193cm)">6'4" (193cm)</SelectItem>
+                  <SelectItem value="6'5&quot; (196cm)">6'5" (196cm)</SelectItem>
+                  <SelectItem value="6'6&quot; (198cm)">6'6" (198cm)</SelectItem>
+                  <SelectItem value="6'7&quot; (201cm)">6'7" (201cm)</SelectItem>
+                  <SelectItem value="6'8&quot; (203cm)">6'8" (203cm)</SelectItem>
+                  <SelectItem value="6'9&quot; (206cm)">6'9" (206cm)</SelectItem>
+                  <SelectItem value="6'10&quot; (208cm)">6'10" (208cm)</SelectItem>
+                  <SelectItem value="6'11&quot; (211cm)">6'11" (211cm)</SelectItem>
+                  <SelectItem value="7'0&quot; (213cm)">7'0" (213cm)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="weight">Weight</Label>
-              <Input
-                id="weight"
-                placeholder="e.g., 70kg"
-                value={formData.weight}
-                onChange={(e) => handleInputChange("weight", e.target.value)}
-              />
+              <Select value={formData.weight} onValueChange={(value) => handleInputChange("weight", value)}>
+                <SelectTrigger id="weight" className="w-full">
+                  <SelectValue placeholder="Select weight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="40kg (88lbs)">40kg (88lbs)</SelectItem>
+                  <SelectItem value="45kg (99lbs)">45kg (99lbs)</SelectItem>
+                  <SelectItem value="50kg (110lbs)">50kg (110lbs)</SelectItem>
+                  <SelectItem value="55kg (121lbs)">55kg (121lbs)</SelectItem>
+                  <SelectItem value="60kg (132lbs)">60kg (132lbs)</SelectItem>
+                  <SelectItem value="65kg (143lbs)">65kg (143lbs)</SelectItem>
+                  <SelectItem value="70kg (154lbs)">70kg (154lbs)</SelectItem>
+                  <SelectItem value="75kg (165lbs)">75kg (165lbs)</SelectItem>
+                  <SelectItem value="80kg (176lbs)">80kg (176lbs)</SelectItem>
+                  <SelectItem value="85kg (187lbs)">85kg (187lbs)</SelectItem>
+                  <SelectItem value="90kg (198lbs)">90kg (198lbs)</SelectItem>
+                  <SelectItem value="95kg (209lbs)">95kg (209lbs)</SelectItem>
+                  <SelectItem value="100kg (220lbs)">100kg (220lbs)</SelectItem>
+                  <SelectItem value="105kg (231lbs)">105kg (231lbs)</SelectItem>
+                  <SelectItem value="110kg (243lbs)">110kg (243lbs)</SelectItem>
+                  <SelectItem value="115kg (254lbs)">115kg (254lbs)</SelectItem>
+                  <SelectItem value="120kg (265lbs)">120kg (265lbs)</SelectItem>
+                  <SelectItem value="125kg (276lbs)">125kg (276lbs)</SelectItem>
+                  <SelectItem value="130kg (287lbs)">130kg (287lbs)</SelectItem>
+                  <SelectItem value="135kg (298lbs)">135kg (298lbs)</SelectItem>
+                  <SelectItem value="140kg (309lbs)">140kg (309lbs)</SelectItem>
+                  <SelectItem value="145kg (320lbs)">145kg (320lbs)</SelectItem>
+                  <SelectItem value="150kg (331lbs)">150kg (331lbs)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -522,12 +565,24 @@ export default function EditProfilePage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="siblings">Siblings</Label>
-              <Input
-                id="siblings"
-                placeholder="e.g., 2 brothers, 1 sister"
-                value={formData.siblings}
-                onChange={(e) => handleInputChange("siblings", e.target.value)}
-              />
+              <Select value={formData.siblings} onValueChange={(value) => handleInputChange("siblings", value)}>
+                <SelectTrigger id="siblings" className="w-full">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">None</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="6">6</SelectItem>
+                  <SelectItem value="7">7</SelectItem>
+                  <SelectItem value="8">8</SelectItem>
+                  <SelectItem value="9">9</SelectItem>
+                  <SelectItem value="10+">10+</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="family_type">Family Type</Label>
@@ -610,34 +665,16 @@ export default function EditProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Hobbies</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a hobby"
-                value={newHobby}
-                onChange={(e) => setNewHobby(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddHobby())}
-              />
-              <Button type="button" onClick={handleAddHobby}>
-                Add
-              </Button>
-            </div>
-            {hobbies.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {hobbies.map((hobby) => (
-                  <div key={hobby} className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm">
-                    {hobby}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveHobby(hobby)}
-                      className="ml-1 text-muted-foreground hover:text-foreground"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Label>Hobbies & Interests</Label>
+            <MultiSelect
+              options={HOBBIES_LIST}
+              selected={hobbies}
+              onChange={setHobbies}
+              placeholder="Search and select hobbies..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Select multiple hobbies that interest you. This helps us find better matches.
+            </p>
           </div>
         </CardContent>
       </Card>

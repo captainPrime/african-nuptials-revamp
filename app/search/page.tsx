@@ -14,6 +14,7 @@ import { Footer } from "@/components/footer"
 import { Heart, Grid3x3, List } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { getCompatibleMatches } from "@/lib/utils/matching-algorithm"
 
 export default function SearchPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -23,6 +24,7 @@ export default function SearchPage() {
   const [likedProfiles, setLikedProfiles] = useState<Set<string>>(new Set())
   const [existingRequests, setExistingRequests] = useState<Set<string>>(new Set())
   const [friendships, setFriendships] = useState<Set<string>>(new Set())
+  const [matchScores, setMatchScores] = useState<Map<string, number>>(new Map())
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -150,6 +152,16 @@ export default function SearchPage() {
       }
 
       setProfiles(filteredData)
+
+      if (user && filteredData.length > 0) {
+        const matches = await getCompatibleMatches(user.id, filteredData.length)
+        const scoresMap = new Map<string, number>()
+        matches.forEach((match) => {
+          scoresMap.set(match.profile.id, match.compatibility_score)
+        })
+        setMatchScores(scoresMap)
+      }
+
       setLoading(false)
     }
 
@@ -200,11 +212,20 @@ export default function SearchPage() {
     }
   }
 
-  const handleSendInterest = async (profileId: string) => {
+  const handleSendInterest = async (profileId: string, profileGender: string) => {
     if (!currentUser) {
       toast({
         title: "Login required",
         description: "Please login to send interest requests",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (currentUser.gender === profileGender) {
+      toast({
+        title: "Cannot send interest",
+        description: "You can only send interest to opposite gender profiles",
         variant: "destructive",
       })
       return
@@ -496,6 +517,10 @@ export default function SearchPage() {
                       ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear()
                       : null
                     const isLiked = likedProfiles.has(profile.id)
+                    const isFriend = friendships.has(profile.id)
+                    const isSameGender = currentUser?.gender === profile.gender
+                    const matchPercentage = matchScores.get(profile.id)
+                    const canSendInterest = profile.who_can_send_interest !== "none"
 
                     return (
                       <Card key={profile.id} className="overflow-hidden">
@@ -508,6 +533,11 @@ export default function SearchPage() {
                             />
                             <div className="absolute left-3 top-3 flex gap-2">
                               <div className="h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                              {matchPercentage !== undefined && (
+                                <Badge className="bg-[#52343c] text-white font-semibold">
+                                  {Math.round(matchPercentage)}% Match
+                                </Badge>
+                              )}
                             </div>
                             <Button
                               size="icon"
@@ -529,6 +559,11 @@ export default function SearchPage() {
                             {profile.first_name} {profile.last_name}
                           </h3>
                           <div className="mb-3 flex flex-wrap gap-2">
+                            {isFriend && (
+                              <Badge variant="secondary" className="bg-green-500 text-white">
+                                Friend
+                              </Badge>
+                            )}
                             {profile.education && (
                               <Badge variant="secondary" className="bg-primary text-primary-foreground">
                                 {profile.education}
@@ -551,24 +586,26 @@ export default function SearchPage() {
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {friendships.has(profile.id) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}
-                              >
-                                Chat now
-                              </Button>
-                            )}
-                            {!existingRequests.has(profile.id) && (
-                              <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
-                                Send interest
-                              </Button>
-                            )}
-                            {existingRequests.has(profile.id) && !friendships.has(profile.id) && (
-                              <Button size="sm" variant="outline" disabled>
-                                Request Sent
-                              </Button>
+                            {!isSameGender && (
+                              <>
+                                {isFriend ? (
+                                  <Button size="sm" onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}>
+                                    Chat now
+                                  </Button>
+                                ) : !canSendInterest ? (
+                                  <Button size="sm" variant="outline" disabled>
+                                    User is Private
+                                  </Button>
+                                ) : !existingRequests.has(profile.id) ? (
+                                  <Button size="sm" onClick={() => handleSendInterest(profile.id, profile.gender)}>
+                                    Send interest
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="outline" disabled>
+                                    Request Sent
+                                  </Button>
+                                )}
+                              </>
                             )}
                             <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
                               More details
@@ -586,6 +623,10 @@ export default function SearchPage() {
                       ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear()
                       : null
                     const isLiked = likedProfiles.has(profile.id)
+                    const isFriend = friendships.has(profile.id)
+                    const isSameGender = currentUser?.gender === profile.gender
+                    const matchPercentage = matchScores.get(profile.id)
+                    const canSendInterest = profile.who_can_send_interest !== "none"
 
                     return (
                       <Card key={profile.id} className="overflow-hidden">
@@ -597,6 +638,11 @@ export default function SearchPage() {
                               className="h-full w-full rounded-lg object-cover"
                             />
                             <div className="absolute left-3 top-3 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                            {matchPercentage !== undefined && (
+                              <Badge className="absolute left-3 top-8 bg-[#52343c] text-white font-semibold">
+                                {Math.round(matchPercentage)}% Match
+                              </Badge>
+                            )}
                             {profile.membership_plan !== "free" && (
                               <div className="absolute bottom-0 left-0 right-0 rounded-b-lg bg-green-500 py-1 text-center text-xs font-medium text-white">
                                 Available Online
@@ -610,6 +656,11 @@ export default function SearchPage() {
                                   {profile.first_name} {profile.last_name}
                                 </h3>
                                 <div className="mb-3 flex flex-wrap gap-2">
+                                  {isFriend && (
+                                    <Badge variant="secondary" className="bg-green-500 text-white">
+                                      Friend
+                                    </Badge>
+                                  )}
                                   {profile.education && (
                                     <Badge variant="secondary" className="bg-primary text-primary-foreground">
                                       {profile.education}
@@ -642,24 +693,29 @@ export default function SearchPage() {
                               </Button>
                             </div>
                             <div className="mt-auto flex flex-wrap gap-2">
-                              {friendships.has(profile.id) && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}
-                                >
-                                  Chat now
-                                </Button>
-                              )}
-                              {!existingRequests.has(profile.id) && (
-                                <Button size="sm" onClick={() => handleSendInterest(profile.id)}>
-                                  Send interest
-                                </Button>
-                              )}
-                              {existingRequests.has(profile.id) && !friendships.has(profile.id) && (
-                                <Button size="sm" variant="outline" disabled>
-                                  Request Sent
-                                </Button>
+                              {!isSameGender && (
+                                <>
+                                  {isFriend ? (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => router.push(`/dashboard/chat?userId=${profile.id}`)}
+                                    >
+                                      Chat now
+                                    </Button>
+                                  ) : !canSendInterest ? (
+                                    <Button size="sm" variant="outline" disabled>
+                                      User is Private
+                                    </Button>
+                                  ) : !existingRequests.has(profile.id) ? (
+                                    <Button size="sm" onClick={() => handleSendInterest(profile.id, profile.gender)}>
+                                      Send interest
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline" disabled>
+                                      Request Sent
+                                    </Button>
+                                  )}
+                                </>
                               )}
                               <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
                                 More details

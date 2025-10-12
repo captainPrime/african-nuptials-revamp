@@ -46,31 +46,44 @@ export async function getCompatibleMatches(userId: string, limit = 10): Promise<
   const matchScores: MatchScore[] = []
 
   for (const match of potentialMatches) {
-    // Call the database function to calculate score
-    const { data: scoreData } = await supabase.rpc("calculate_match_score", {
-      p_user_id: userId,
-      p_target_id: match.id,
-    })
-
-    // Get the detailed scores
-    const { data: detailedScore } = await supabase
-      .from("match_scores")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("matched_profile_id", match.id)
-      .single()
-
-    if (detailedScore) {
-      matchScores.push({
-        profile: match,
-        compatibility_score: detailedScore.compatibility_score,
-        age_score: detailedScore.age_score,
-        location_score: detailedScore.location_score,
-        religion_score: detailedScore.religion_score,
-        education_score: detailedScore.education_score,
-        interests_score: detailedScore.interests_score,
-        behavior_score: detailedScore.behavior_score,
+    try {
+      const { data: scoreData, error: rpcError } = await supabase.rpc("calculate_match_score", {
+        p_user_id: userId,
+        p_target_id: match.id,
       })
+
+      if (rpcError) {
+        console.error("[v0] Error calculating match score:", rpcError)
+        continue
+      }
+
+      const { data: detailedScore, error: fetchError } = await supabase
+        .from("match_scores")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("matched_profile_id", match.id)
+        .maybeSingle() // Use maybeSingle instead of single to avoid error when no rows
+
+      if (fetchError) {
+        console.error("[v0] Error fetching match score:", fetchError)
+        continue
+      }
+
+      if (detailedScore) {
+        matchScores.push({
+          profile: match,
+          compatibility_score: Number(detailedScore.compatibility_score),
+          age_score: Number(detailedScore.age_score),
+          location_score: Number(detailedScore.location_score),
+          religion_score: Number(detailedScore.religion_score),
+          education_score: Number(detailedScore.education_score),
+          interests_score: Number(detailedScore.interests_score),
+          behavior_score: Number(detailedScore.behavior_score),
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error processing match:", error)
+      continue
     }
   }
 
@@ -88,15 +101,24 @@ export async function trackInteraction(
 ) {
   const supabase = getSupabaseBrowserClient()
 
-  await supabase.from("user_interactions").insert({
+  const { error: insertError } = await supabase.from("user_interactions").insert({
     user_id: userId,
     target_profile_id: targetProfileId,
     interaction_type: interactionType,
   })
 
+  if (insertError) {
+    console.error("[v0] Error tracking interaction:", insertError)
+    return
+  }
+
   // Recalculate match score after interaction
-  await supabase.rpc("calculate_match_score", {
+  const { error: rpcError } = await supabase.rpc("calculate_match_score", {
     p_user_id: userId,
     p_target_id: targetProfileId,
   })
+
+  if (rpcError) {
+    console.error("[v0] Error recalculating match score:", rpcError)
+  }
 }

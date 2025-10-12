@@ -46,6 +46,7 @@ export default function DashboardPage() {
   })
 
   const [totalUnreadMessages, setTotalUnreadMessages] = useState(0)
+  const [friendships, setFriendships] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -151,6 +152,21 @@ export default function DashboardPage() {
         )
         setRecentChats(chatsWithOtherUser)
         setTotalUnreadMessages(totalUnread)
+      }
+
+      const { data: acceptedRequests } = await supabase
+        .from("interest_requests")
+        .select("sender_id, receiver_id")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .eq("status", "accepted")
+
+      if (acceptedRequests) {
+        const friendSet = new Set<string>()
+        acceptedRequests.forEach((req) => {
+          const friendId = req.sender_id === user.id ? req.receiver_id : req.sender_id
+          friendSet.add(friendId)
+        })
+        setFriendships(friendSet)
       }
 
       setLoading(false)
@@ -393,6 +409,7 @@ export default function DashboardPage() {
                     const age = match.date_of_birth
                       ? new Date().getFullYear() - new Date(match.date_of_birth).getFullYear()
                       : null
+                    const isFriend = friendships.has(match.id)
                     return (
                       <Card
                         key={match.id}
@@ -405,10 +422,11 @@ export default function DashboardPage() {
                             alt={match.first_name}
                             className="h-full w-full object-cover"
                           />
-                          <div className="absolute right-2 top-2">
+                          <div className="absolute right-2 top-2 flex flex-col gap-1">
                             <Badge className="bg-green-500 text-xs font-semibold text-white">
                               {Math.round(matchScore.compatibility_score)}% Match
                             </Badge>
+                            {isFriend && <Badge className="bg-blue-500 text-xs font-semibold text-white">Friend</Badge>}
                           </div>
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 text-white">
                             <p className="font-semibold">{match.first_name}</p>
@@ -768,22 +786,6 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">More data</span>
                   <span className="font-medium">3/5</span>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Heart className="h-5 w-5 fill-primary text-primary" />
-                    <span className="text-2xl font-bold text-foreground">{likesCount}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Likes</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Heart className="h-5 w-5 text-primary" />
-                    <span className="text-2xl font-bold text-foreground">{interestsCount}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Interests</p>
                 </div>
               </div>
               <Button className="mt-6 w-full bg-primary" onClick={() => router.push("/dashboard/profile/edit")}>
