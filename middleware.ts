@@ -43,11 +43,19 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url))
     }
 
-    const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).single()
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, profile_completion")
+      .eq("id", user.id)
+      .single()
 
     if (!profile) {
       // Redirect to complete profile if profile doesn't exist
       return NextResponse.redirect(new URL("/complete-profile", request.url))
+    }
+
+    if (profile.profile_completion < 100 && !request.nextUrl.pathname.startsWith("/dashboard/profile")) {
+      return NextResponse.redirect(new URL("/dashboard/profile/edit", request.url))
     }
   }
 

@@ -379,27 +379,55 @@ export default function CompleteProfilePage() {
               <div className="space-y-3">
                 <Label>Date of birth</Label>
                 <div className="grid grid-cols-3 gap-3">
-                  <Input
-                    placeholder="Day"
-                    value={day}
-                    onChange={(e) => setDay(e.target.value)}
-                    required
-                    maxLength={2}
-                  />
-                  <Input
-                    placeholder="Month"
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                    required
-                    maxLength={2}
-                  />
-                  <Input
-                    placeholder="Year"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    required
-                    maxLength={4}
-                  />
+                  <Select value={day} onValueChange={setDay} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <SelectItem key={d} value={d.toString()}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={month} onValueChange={setMonth} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                      ].map((m, i) => (
+                        <SelectItem key={i + 1} value={(i + 1).toString()}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={year} onValueChange={setYear} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 18 - i).map((y) => (
+                        <SelectItem key={y} value={y.toString()}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -436,7 +464,7 @@ export default function CompleteProfilePage() {
                 <div className="space-y-2">
                   <Label htmlFor="religion">{gender === "male" ? "His" : "Her"} religion</Label>
                   <Select value={religion} onValueChange={setReligion} required>
-                    <SelectTrigger id="religion">
+                    <SelectTrigger id="religion" className="w-full">
                       <SelectValue placeholder="Please Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -451,7 +479,7 @@ export default function CompleteProfilePage() {
                 <div className="space-y-2">
                   <Label htmlFor="community">Community</Label>
                   <Select value={community} onValueChange={setCommunity} required>
-                    <SelectTrigger id="community">
+                    <SelectTrigger id="community" className="w-full">
                       <SelectValue placeholder="Please Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -469,7 +497,7 @@ export default function CompleteProfilePage() {
                 <div className="space-y-2">
                   <Label htmlFor="livingIn">Living in</Label>
                   <Select value={livingIn} onValueChange={setLivingIn} required>
-                    <SelectTrigger id="livingIn">
+                    <SelectTrigger id="livingIn" className="w-full">
                       <SelectValue placeholder="Please Select" />
                     </SelectTrigger>
                     <SelectContent>

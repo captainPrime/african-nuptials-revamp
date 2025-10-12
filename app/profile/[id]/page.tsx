@@ -61,16 +61,25 @@ export default function PublicProfilePage() {
       const { data } = await supabase.from("profiles").select("*").eq("id", params.id).single()
       if (data) {
         setProfile(data)
-        // Increment profile views
-        if (user) {
+        if (user && user.id !== params.id) {
+          // Insert profile view
           await supabase.from("profile_views").insert({
             profile_id: params.id as string,
             viewer_id: user.id,
           })
-        } else {
-          await supabase.from("profile_views").insert({
-            profile_id: params.id as string,
-          })
+
+          // Update profile views count
+          const { count } = await supabase
+            .from("profile_views")
+            .select("*", { count: "exact", head: true })
+            .eq("profile_id", params.id as string)
+
+          if (count !== null) {
+            await supabase
+              .from("profiles")
+              .update({ profile_views: count })
+              .eq("id", params.id as string)
+          }
         }
       }
       setLoading(false)

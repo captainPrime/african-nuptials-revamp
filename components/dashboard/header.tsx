@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Globe,
   Menu,
@@ -14,6 +15,7 @@ import {
   Settings,
   LogOut,
   Users,
+  Bell,
 } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Profile } from "@/lib/types/profile"
@@ -42,12 +44,14 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
   const pathname = usePathname()
 
   const getPageTitle = () => {
     const currentItem = menuItems.find((item) => item.href === pathname)
+    if (pathname === "/dashboard/notifications") return "Notifications"
     return currentItem?.label || "Dashboard"
   }
 
@@ -59,9 +63,38 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
       if (user) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
         if (data) setProfile(data)
+
+        // Fetch unread notifications count
+        const { count } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_read", false)
+
+        setUnreadNotifications(count || 0)
       }
     }
     fetchProfile()
+
+    // Subscribe to real-time notifications
+    const channel = supabase
+      .channel("header-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+        },
+        () => {
+          fetchProfile()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [supabase])
 
   const handleLogout = async () => {
@@ -84,6 +117,20 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
           <Button variant="ghost" size="sm" className="gap-2">
             <Globe className="h-4 w-4" />
             English
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={() => router.push("/dashboard/notifications")}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotifications > 0 && (
+              <Badge className="absolute -right-1 -top-1 h-5 min-w-5 rounded-full bg-red-500 px-1.5 text-xs">
+                {unreadNotifications > 9 ? "9+" : unreadNotifications}
+              </Badge>
+            )}
           </Button>
 
           <DropdownMenu>
