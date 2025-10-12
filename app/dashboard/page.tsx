@@ -11,10 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Heart, Search, ChevronLeft, ChevronRight, MapPin, Briefcase, Ruler, Award, Check } from "lucide-react"
+import { Heart, Search, ChevronLeft, ChevronRight, MapPin, Briefcase, Ruler, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { getCompatibleMatches, type MatchScore } from "@/lib/utils/matching-algorithm"
+import { ProfileCompletion } from "@/components/profile-completion"
 
 interface InterestRequest {
   id: string
@@ -717,82 +718,15 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-sm">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="font-serif text-xl font-semibold">Profiles status</h2>
-              </div>
-              <div className="mb-6">
-                <h3 className="mb-4 text-center text-sm font-medium text-muted-foreground">Profile completion</h3>
-                <div className="relative mx-auto h-40 w-40">
-                  <svg className="h-full w-full -rotate-90 transform">
-                    <circle
-                      cx="80"
-                      cy="80"
-                      r="70"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      className="text-muted/20"
-                    />
-                    <circle
-                      cx="80"
-                      cy="80"
-                      r="70"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      strokeDasharray={`${2 * Math.PI * 70}`}
-                      strokeDashoffset={`${2 * Math.PI * 70 * (1 - (currentUser?.profile_completion || 0) / 100)}`}
-                      className="text-primary transition-all duration-500"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-foreground">{currentUser?.profile_completion || 0}%</span>
-                    <span className="text-xs text-muted-foreground">complete</span>
-                  </div>
-                </div>
-                {currentUser && currentUser.profile_completion < 100 && (
-                  <div className="mt-4 text-center">
-                    <Badge variant="destructive" className="text-xs">
-                      Incomplete!
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3 border-t pt-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Check className="h-4 w-4 text-green-500" />
-                    Interests
-                  </span>
-                  <span className="font-medium">3/3</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Check className="h-4 w-4 text-green-500" />
-                    Profile photo
-                  </span>
-                  <span className="font-medium">1/1</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Check className="h-4 w-4 text-green-500" />
-                    Socials
-                  </span>
-                  <span className="font-medium">1</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">More data</span>
-                  <span className="font-medium">3/5</span>
-                </div>
-              </div>
-              <Button className="mt-6 w-full bg-primary" onClick={() => router.push("/dashboard/profile/edit")}>
-                Complete Profile
-              </Button>
-            </CardContent>
-          </Card>
+          {currentUser && (
+            <ProfileCompletion
+              profile={currentUser}
+              likesCount={likesCount}
+              viewsCount={currentUser.profile_views || 0}
+              interestsCount={interestsCount}
+              showCompleteButton={true}
+            />
+          )}
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">

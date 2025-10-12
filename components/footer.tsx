@@ -66,13 +66,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/features" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  Features
+                <Link href="/membership" className="text-primary-foreground/80 hover:text-primary-foreground">
+                  Membership
                 </Link>
               </li>
               <li>
-                <Link href="/documentation" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  Documentation
+                <Link href="/articles" className="text-primary-foreground/80 hover:text-primary-foreground">
+                  Articles
                 </Link>
               </li>
               <li>
@@ -88,28 +88,18 @@ export function Footer() {
             <h3 className="font-serif text-lg font-semibold">Information</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/account" className="text-primary-foreground/80 hover:text-primary-foreground">
+                <Link href="/dashboard" className="text-primary-foreground/80 hover:text-primary-foreground">
                   My account
                 </Link>
               </li>
               <li>
-                <Link href="/demo" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  Demo
+                <Link href="/search" className="text-primary-foreground/80 hover:text-primary-foreground">
+                  Search Profiles
                 </Link>
               </li>
               <li>
-                <Link href="/help" className="text-primary-foreground/80 hover:text-primary-foreground">
+                <Link href="/contact" className="text-primary-foreground/80 hover:text-primary-foreground">
                   Help
-                </Link>
-              </li>
-              <li>
-                <Link href="/invite" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  Invite the unknown
-                </Link>
-              </li>
-              <li>
-                <Link href="/book-call" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  Book a call
                 </Link>
               </li>
               <li>

@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Eye, Users, Edit } from "lucide-react"
+import { Edit } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { ProfileCompletion } from "@/components/profile-completion"
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -103,8 +104,6 @@ export default function ProfilePage() {
     )
   }
 
-  const age = profile.date_of_birth ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() : null
-
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Profile Header Card */}
@@ -168,104 +167,24 @@ export default function ProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Stats */}
-        <Card className="lg:col-span-2">
-          <CardContent className="p-6">
-            <h3 className="mb-4 font-serif text-lg font-semibold">Profile status</h3>
-            <div className="space-y-4">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">Profile completion</span>
-                  <span className="text-2xl font-bold text-primary">{profile.profile_completion}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${profile.profile_completion}%` }}
-                  />
-                </div>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div
-                      className={`h-2 w-2 rounded-full ${profile.interests_received > 0 ? "bg-primary" : "bg-muted"}`}
-                    />
-                    <span className={profile.interests_received > 0 ? "text-foreground" : "text-muted-foreground"}>
-                      Interests
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${profile.profile_photo ? "bg-primary" : "bg-muted"}`} />
-                    <span className={profile.profile_photo ? "text-foreground" : "text-muted-foreground"}>
-                      Profile photo
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`h-2 w-2 rounded-full ${profile.about_me ? "bg-primary" : "bg-muted"}`} />
-                    <span className={profile.about_me ? "text-foreground" : "text-muted-foreground"}>Socials</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div
-                      className={`h-2 w-2 rounded-full ${
-                        profile.photo_gallery && profile.photo_gallery.length > 0 ? "bg-primary" : "bg-muted"
-                      }`}
-                    />
-                    <span
-                      className={
-                        profile.photo_gallery && profile.photo_gallery.length > 0
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      More data
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                    <Heart className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{likesCount}</p>
-                    <p className="text-xs text-muted-foreground">Likes</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                    <Eye className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{profile.profile_views || 0}</p>
-                    <p className="text-xs text-muted-foreground">Views</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100">
-                    <Users className="h-5 w-5 text-pink-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{interestsCount}</p>
-                    <p className="text-xs text-muted-foreground">Interests</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ProfileCompletion
+          profile={profile}
+          likesCount={likesCount}
+          viewsCount={profile.profile_views || 0}
+          interestsCount={interestsCount}
+          showCompleteButton={false}
+        />
 
         {/* My Photo Gallery */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardContent className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-serif text-lg font-semibold">My Photo Gallery</h3>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {profile.photo_gallery && profile.photo_gallery.length > 0 ? (
                 <>
-                  {profile.photo_gallery.slice(0, 3).map((photo, index) => (
+                  {profile.photo_gallery.slice(0, 5).map((photo, index) => (
                     <div key={index} className="aspect-square overflow-hidden rounded-lg">
                       <img
                         src={photo || "/placeholder.svg"}
@@ -291,7 +210,7 @@ export default function ProfilePage() {
                   </label>
                 </>
               ) : (
-                <div className="col-span-2 flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border">
+                <div className="col-span-2 flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-border md:col-span-3">
                   <label className="cursor-pointer text-center">
                     <input
                       type="file"
