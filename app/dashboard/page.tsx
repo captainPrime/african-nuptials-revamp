@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [recentChats, setRecentChats] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
   const { toast } = useToast()
@@ -170,6 +171,20 @@ export default function DashboardPage() {
         setFriendships(friendSet)
       }
 
+      const { data: subscription } = await supabase
+        .from("user_subscriptions")
+        .select(
+          `
+          *,
+          package:subscription_packages(*)
+        `,
+        )
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle()
+
+      setCurrentSubscription(subscription)
+
       setLoading(false)
     }
 
@@ -250,6 +265,10 @@ export default function DashboardPage() {
     setCurrentMatchIndex((prev) => (prev - 1 + newMatches.length) % newMatches.length)
   }
 
+  const daysRemaining = currentSubscription
+    ? Math.ceil((new Date(currentSubscription.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : 0
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -270,9 +289,9 @@ export default function DashboardPage() {
       <Card className="border-none shadow-sm">
         <CardContent className="p-6">
           <Tabs defaultValue="advance" className="w-full">
-            <TabsList className="mb-6 grid w-full max-w-md grid-cols-2">
+            <TabsList className="mb-6  w-full max-w-md ">
               <TabsTrigger value="advance">Advance Search</TabsTrigger>
-              <TabsTrigger value="profile-id">Profile ID Search</TabsTrigger>
+
             </TabsList>
             <TabsContent value="advance">
               <div className="grid gap-4 md:grid-cols-4">
@@ -420,7 +439,7 @@ export default function DashboardPage() {
                         onClick={() => router.push(`/profile/${match.id}`)}
                       >
                         {/* Profile Image + Overlay */}
-                        <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden">
+                        <div className="relative w-full aspect-[3/5] rounded-xl overflow-hidden">
                           {/* Background Image */}
                           <img
                             src={match.profile_photo || "/placeholder.svg?height=400&width=300"}
@@ -437,9 +456,7 @@ export default function DashboardPage() {
                               {Math.round(matchScore.compatibility_score)}% Match
                             </Badge>
                             {isFriend && (
-                              <Badge className="bg-blue-500 text-xs font-semibold text-white shadow-md">
-                                Friend
-                              </Badge>
+                              <Badge className="bg-blue-500 text-xs font-semibold text-white shadow-md">Friend</Badge>
                             )}
                           </div>
 
@@ -458,7 +475,6 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
@@ -749,15 +765,41 @@ export default function DashboardPage() {
               <h2 className="mb-6 font-serif text-xl font-semibold">Plan details</h2>
               <div className="text-center">
                 <div className="mb-4 flex items-center justify-center">
-                  <div className="rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 p-6 shadow-lg">
+                  <div
+                    className={`rounded-full p-6 shadow-lg ${currentSubscription?.package?.name === "premium"
+                        ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                        : currentSubscription?.package?.name === "standard"
+                          ? "bg-gradient-to-br from-blue-400 to-blue-600"
+                          : "bg-gradient-to-br from-gray-400 to-gray-600"
+                      }`}
+                  >
                     <Award className="h-12 w-12 text-white" />
                   </div>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground">Standard plan</h3>
-                <p className="mb-1 text-sm text-muted-foreground">Validity 6Months</p>
-                <p className="mb-6 text-sm text-muted-foreground">Valid till 24 June 2024</p>
-                <Button variant="outline" className="w-full border-primary/20 bg-accent/30 hover:bg-accent/50">
-                  Upgrade Now
+                <h3 className="mb-2 text-lg font-semibold capitalize text-foreground">
+                  {currentSubscription?.package?.display_name || "Basic Plan"}
+                </h3>
+                {currentSubscription ? (
+                  <>
+                    <p className="mb-1 text-sm text-muted-foreground">
+                      Validity {currentSubscription.package.duration_months} Months
+                    </p>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      Valid till {new Date(currentSubscription.end_date).toLocaleDateString()}
+                    </p>
+                    <Badge variant={daysRemaining > 7 ? "default" : "destructive"} className="mb-4">
+                      {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Expired"}
+                    </Badge>
+                  </>
+                ) : (
+                  <p className="mb-6 text-sm text-muted-foreground">Free plan - No expiration</p>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/20 bg-accent/30 hover:bg-accent/50"
+                  onClick={() => router.push("/dashboard/plan")}
+                >
+                  {currentSubscription?.package?.name === "premium" ? "Manage Plan" : "Upgrade Now"}
                 </Button>
               </div>
             </CardContent>

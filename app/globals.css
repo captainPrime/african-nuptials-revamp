@@ -134,4 +134,8 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Add smooth scroll behavior for anchor links */
+  html {
+    scroll-behavior: smooth;
+  }
 }

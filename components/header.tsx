@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Globe, User, LogOut } from "lucide-react"
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 export function Header({ onSignUpClick, onLoginClick }: { onSignUpClick: () => void; onLoginClick: () => void }) {
@@ -20,6 +22,7 @@ export function Header({ onSignUpClick, onLoginClick }: { onSignUpClick: () => v
   const [profile, setProfile] = useState<any>(null)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -70,6 +73,22 @@ export function Header({ onSignUpClick, onLoginClick }: { onSignUpClick: () => v
     router.refresh()
   }
 
+  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault()
+
+    // If not on homepage, navigate to homepage first
+    if (pathname !== "/") {
+      router.push(`/#${targetId}`)
+      return
+    }
+
+    // Smooth scroll to section
+    const element = document.getElementById(targetId)
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }
+
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -97,21 +116,37 @@ export function Header({ onSignUpClick, onLoginClick }: { onSignUpClick: () => v
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          <Link href="/about" className="text-sm font-medium text-foreground/80 hover:text-foreground">
+          <a
+            href="/#about"
+            onClick={(e) => handleSmoothScroll(e, "about")}
+            className="text-sm font-medium text-foreground/80 hover:text-foreground"
+          >
             About
-          </Link>
-          <Link href="/membership" className="text-sm font-medium text-foreground/80 hover:text-foreground">
+          </a>
+          <a
+            href="/#packages"
+            onClick={(e) => handleSmoothScroll(e, "packages")}
+            className="text-sm font-medium text-foreground/80 hover:text-foreground"
+          >
             Membership
-          </Link>
+          </a>
           <Link href="/news" className="text-sm font-medium text-foreground/80 hover:text-foreground">
             News
           </Link>
-          <Link href="/contact" className="text-sm font-medium text-foreground/80 hover:text-foreground">
+          <a
+            href="/#contact"
+            onClick={(e) => handleSmoothScroll(e, "contact")}
+            className="text-sm font-medium text-foreground/80 hover:text-foreground"
+          >
             Contact
-          </Link>
-          <Link href="/faq" className="text-sm font-medium text-foreground/80 hover:text-foreground">
+          </a>
+          <a
+            href="/#faq"
+            onClick={(e) => handleSmoothScroll(e, "faq")}
+            className="text-sm font-medium text-foreground/80 hover:text-foreground"
+          >
             FAQ
-          </Link>
+          </a>
         </nav>
 
         <div className="flex items-center gap-4">

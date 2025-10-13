@@ -1,22 +1,21 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { HeroSearch } from "@/components/hero-search"
 import { SignupModal } from "@/components/auth/signup-modal"
 import { LoginModal } from "@/components/auth/login-modal"
 import { ForgotPasswordModal } from "@/components/auth/forgot-password-modal"
+import { HeroSearch } from "@/components/hero-search"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
-import { Heart, Users, Shield, Check, ArrowRight, Star } from "lucide-react"
+import { Heart, Users, Shield, Check, ArrowRight, ChevronLeft, ChevronRight, Search } from "lucide-react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
+import { FAQSection } from "@/components/faq-section"
 
 export default function HomePage() {
   const [showSignup, setShowSignup] = useState(false)
@@ -24,8 +23,9 @@ export default function HomePage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [packages, setPackages] = useState<any[]>([])
   const [featuredProfiles, setFeaturedProfiles] = useState<any[]>([])
-  const [articles, setArticles] = useState<any[]>([])
   const [testimonials, setTestimonials] = useState<any[]>([])
+  const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0)
+  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0)
 
   useEffect(() => {
     const handleShowLogin = () => setShowLogin(true)
@@ -41,35 +41,33 @@ export default function HomePage() {
       .from("subscription_packages")
       .select("*")
       .eq("is_active", true)
-      .order("display_order")
+      .order("price")
       .limit(3)
 
     if (packagesData) setPackages(packagesData)
 
     const { data: profilesData } = await supabase
       .from("profiles")
-      .select("id, first_name, age, city, country, profile_photo, is_verified")
+      .select("id, first_name, date_of_birth, city, country, profile_photo, is_verified, last_active")
       .eq("is_featured", true)
-      .order("featured_order")
-      .limit(6)
+      .order("created_at", { ascending: false })
+      .limit(5)
 
-    if (profilesData) setFeaturedProfiles(profilesData)
-
-    const { data: articlesData } = await supabase
-      .from("articles")
-      .select("id, title, slug, excerpt, cover_image, published_at")
-      .eq("is_published", true)
-      .order("published_at", { ascending: false })
-      .limit(3)
-
-    if (articlesData) setArticles(articlesData)
+    if (profilesData) {
+      // Calculate age on the client side
+      const profilesWithAge = profilesData.map((profile) => ({
+        ...profile,
+        age: profile.date_of_birth ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() : null,
+      }))
+      setFeaturedProfiles(profilesWithAge)
+    }
 
     const { data: testimonialsData } = await supabase
       .from("testimonials")
       .select("*")
       .eq("is_approved", true)
-      .order("display_order")
-      .limit(3)
+      .order("created_at", { ascending: false })
+      .limit(6)
 
     if (testimonialsData) setTestimonials(testimonialsData)
   }
@@ -89,392 +87,534 @@ export default function HomePage() {
     // Newsletter subscription logic here
   }
 
+  const nextFeaturedProfile = () => {
+    setCurrentFeaturedIndex((prev) => (prev + 3 >= featuredProfiles.length ? 0 : prev + 3))
+  }
+
+  const prevFeaturedProfile = () => {
+    setCurrentFeaturedIndex((prev) => (prev - 3 < 0 ? Math.max(0, featuredProfiles.length - 3) : prev - 3))
+  }
+
+  const nextTestimonial = () => {
+    setCurrentTestimonialIndex((prev) => (prev + 3 >= testimonials.length ? 0 : prev + 3))
+  }
+
+  const prevTestimonial = () => {
+    setCurrentTestimonialIndex((prev) => (prev - 3 < 0 ? Math.max(0, testimonials.length - 3) : prev - 3))
+  }
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#F5F1ED]">
       <Header onSignUpClick={() => setShowSignup(true)} onLoginClick={() => setShowLogin(true)} />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-secondary via-background to-accent/20 py-20">
-          {/* Decorative leaf elements */}
-          <div className="absolute left-0 top-0 h-64 w-64 opacity-20">
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M50 100C50 100 70 60 100 50C130 40 150 60 150 60"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-primary"
-              />
-              <path
-                d="M100 50C100 50 110 80 100 100C90 120 70 130 70 130"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-primary"
-              />
-            </svg>
-          </div>
-          <div className="absolute bottom-0 right-0 h-96 w-96 opacity-20">
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M150 100C150 100 130 140 100 150C70 160 50 140 50 140"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-primary"
-              />
-              <path
-                d="M100 150C100 150 90 120 100 100C110 80 130 70 130 70"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-primary"
-              />
-            </svg>
+        <section id="hero" className="relative overflow-hidden py-20 text-white">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src="/happy-african-couple.jpg"
+              alt="Hero background"
+              className="h-full w-full object-cover"
+            />
+            {/* Dark overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#5C2E2E]/90 via-[#7D4E4E]/85 to-[#5C2E2E]/90"></div>
           </div>
 
-          <div className="container relative mx-auto px-4">
+          {/* Content */}
+          <div className="container relative z-10 mx-auto px-4">
+            <div className="mx-auto max-w-4xl text-center">
+              <h1 className="mb-4 font-serif text-5xl font-bold leading-tight lg:text-6xl">Find Your Perfect Match</h1>
+              <p className="mb-8 text-lg text-white/90">
+                Join thousands of African singles finding love and meaningful connections
+              </p>
+              <HeroSearch />
+            </div>
+          </div>
+          {/* Decorative elements */}
+          <div className="absolute -left-20 -top-20 z-0 h-64 w-64 rounded-full bg-white/5 blur-3xl"></div>
+          <div className="absolute -bottom-20 -right-20 z-0 h-64 w-64 rounded-full bg-white/5 blur-3xl"></div>
+        </section>
+
+        <section id="about" className="relative overflow-hidden bg-white py-20">
+          <div className="container mx-auto px-4">
             <div className="grid items-center gap-12 lg:grid-cols-2">
-              {/* Left Content */}
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
-                  <span className="h-2 w-2 rounded-full bg-primary"></span>
-                  Discover Your Forever Love
-                </div>
-
-                <h1 className="font-serif text-5xl font-bold leading-tight text-primary lg:text-6xl">
-                  Welcome to African Nuptials, Where Love Stories Begin
-                </h1>
-
-                <p className="text-lg leading-relaxed text-muted-foreground">
-                  Embark on a journey of love with us. Your dream wedding is just a click away - because every "I do"
-                  starts with the perfect connection.
-                </p>
-
-                <HeroSearch />
-              </div>
-
-              {/* Right Content - Hero Image */}
+              {/* Left Content - Image */}
               <div className="relative">
-                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl">
+                <div className="relative overflow-hidden rounded-3xl">
                   <img
-                    src="/happy-african-couple-embracing.jpg"
+                    src="happy-african-couple-embracing.jpg"
                     alt="Happy couple"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 </div>
+              </div>
 
-                {/* Floating profile cards */}
-                <div className="absolute -right-4 top-12 h-32 w-32 overflow-hidden rounded-full border-4 border-background shadow-xl">
-                  <img src="/smiling-african-woman.jpg" alt="Profile" className="h-full w-full object-cover" />
+              {/* Right Content */}
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 text-sm text-[#C4A57B]">
+                  <span className="h-8 w-px bg-[#C4A57B]"></span>
+                  Connecting Hearts, Celebrating Love ❤️
                 </div>
-                <div className="absolute -left-4 bottom-32 h-24 w-24 overflow-hidden rounded-full border-4 border-background shadow-xl">
-                  <img src="/happy-african-couple.jpg" alt="Profile" className="h-full w-full object-cover" />
+
+                <h2 className="font-serif text-4xl font-bold leading-tight text-[#5C2E2E] lg:text-5xl">
+                  Where Love Finds its Forever Home
+                </h2>
+
+                <p className="text-lg leading-relaxed text-[#6B5B5B]">
+                  African Nuptials is the first exclusively African matrimony website worldwide. Our platform is more
+                  than just a matrimony platform; it's a journey that begins with a shared smile and leads to a lifetime
+                  of happiness. We understand the significance of finding the perfect life partner, and we are here to
+                  make that journey memorable, exciting, and seamless.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5C2E2E]">
+                      <Shield className="h-6 w-6 text-[#5C2E2E]" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#5C2E2E]">100% Verified</p>
+                      <p className="text-sm text-[#6B5B5B]">Profile</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5C2E2E]">
+                      <Users className="h-6 w-6 text-[#5C2E2E]" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#5C2E2E]">Connect with Like</p>
+                      <p className="text-sm text-[#6B5B5B]">Minded Profiles</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#5C2E2E]">
+                      <Heart className="h-6 w-6 text-[#5C2E2E]" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#5C2E2E]">Attractive packages</p>
+                      <p className="text-sm text-[#6B5B5B]">for your profile</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute right-12 top-1/3 flex h-16 w-16 items-center justify-center rounded-full border-4 border-background bg-primary shadow-xl">
-                  <svg
-                    width="32"
-                    height="32"
-                    viewBox="0 0 32 32"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="text-primary-foreground"
-                  >
-                    <path
-                      d="M16 4C16 4 12 8 12 12C12 14.2091 13.7909 16 16 16C18.2091 16 20 14.2091 20 12C20 8 16 4 16 4Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M8 16C8 16 4 20 4 24C4 26.2091 5.79086 28 8 28C10.2091 28 12 26.2091 12 24C12 20 8 16 8 16Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M24 16C24 16 20 20 20 24C20 26.2091 21.7909 28 24 28C26.2091 28 28 26.2091 28 24C28 20 24 16 24 16Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </div>
+
+                <Button className="bg-[#5C2E2E] text-white hover:bg-[#5C2E2E]/90">
+                  <Search className="mr-2 h-4 w-4" />
+                  Start your Search
+                </Button>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="bg-background py-20">
+        <section id="how-it-works" className="bg-[#F5F1ED] py-20">
           <div className="container mx-auto px-4">
-            <div className="mb-12 text-center">
-              <p className="mb-2 text-sm uppercase tracking-wider text-muted-foreground">About Us</p>
-              <h2 className="font-serif text-3xl font-bold md:text-4xl">
-                Most Trusted and Premium Matrimony Service in the World
-              </h2>
-            </div>
+            <div className="grid items-center gap-12 lg:grid-cols-2">
+              {/* Left Content */}
+              <div className="space-y-8">
+                <h2 className="font-serif text-4xl font-bold text-[#5C2E2E]">Discover Your Perfect Match</h2>
+                <p className="text-lg text-[#6B5B5B]">
+                  Embark on a journey to find your special someone with our innovative matchmaking platform. Explore
+                  meaningful connections and potential lifelong partnerships as you navigate the path to discovering the
+                  perfect match tailored just for you.
+                </p>
 
-            <div className="grid gap-8 md:grid-cols-3">
-              <Card className="text-center">
-                <CardContent className="p-8">
-                  <div className="mb-4 flex justify-center">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                      <Users className="h-10 w-10 text-primary" />
+                <div className="space-y-6">
+                  {/* Step 1 */}
+                  <div className="flex gap-4">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#F4D4D4]">
+                      <svg className="h-8 w-8 text-[#5C2E2E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="mb-2 inline-block rounded-full bg-[#C4A57B]/20 px-3 py-1 text-sm text-[#C4A57B]">
+                        01
+                      </div>
+                      <h3 className="mb-2 text-xl font-bold text-[#5C2E2E]">Sign up</h3>
+                      <p className="text-[#6B5B5B]">
+                        Register for free, showcase your matrimony profile and take the first step towards lasting
+                        connections.
+                      </p>
                     </div>
                   </div>
-                  <h3 className="mb-2 font-serif text-xl font-bold">Genuine profiles</h3>
-                  <p className="text-sm text-muted-foreground">The most trusted wedding matrimony brand</p>
-                </CardContent>
-              </Card>
 
-              <Card className="text-center">
-                <CardContent className="p-8">
-                  <div className="mb-4 flex justify-center">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                      <Shield className="h-10 w-10 text-primary" />
+                  {/* Step 2 */}
+                  <div className="flex gap-4">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#D4E4E4]">
+                      <Users className="h-8 w-8 text-[#5C2E2E]" />
+                    </div>
+                    <div>
+                      <div className="mb-2 inline-block rounded-full bg-[#C4A57B]/20 px-3 py-1 text-sm text-[#C4A57B]">
+                        02
+                      </div>
+                      <h3 className="mb-2 text-xl font-bold text-[#5C2E2E]">Connect</h3>
+                      <p className="text-[#6B5B5B]">
+                        Explore curated matches, effortlessly connecting with potential life partners for a journey of
+                        everlasting companionship.
+                      </p>
                     </div>
                   </div>
-                  <h3 className="mb-2 font-serif text-xl font-bold">Most trusted</h3>
-                  <p className="text-sm text-muted-foreground">The most trusted wedding matrimony brand</p>
-                </CardContent>
-              </Card>
 
-              <Card className="text-center">
-                <CardContent className="p-8">
-                  <div className="mb-4 flex justify-center">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                      <Heart className="h-10 w-10 text-primary" />
+                  {/* Step 3 */}
+                  <div className="flex gap-4">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#D4F4D4]">
+                      <svg className="h-8 w-8 text-[#5C2E2E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="mb-2 inline-block rounded-full bg-[#C4A57B]/20 px-3 py-1 text-sm text-[#C4A57B]">
+                        03
+                      </div>
+                      <h3 className="mb-2 text-xl font-bold text-[#5C2E2E]">Interact</h3>
+                      <p className="text-[#6B5B5B]">
+                        Engage in meaningful conversations, fostering connections that extend into a lifetime of shared
+                        joy and understanding.
+                      </p>
                     </div>
                   </div>
-                  <h3 className="mb-2 font-serif text-xl font-bold">200+ weddings</h3>
-                  <p className="text-sm text-muted-foreground">The most trusted wedding matrimony brand</p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-secondary/30 py-20">
-          <div className="container mx-auto px-4">
-            <div className="mb-12 text-center">
-              <h2 className="mb-4 font-serif text-3xl font-bold md:text-4xl">How It Works</h2>
-              <p className="mx-auto max-w-2xl text-muted-foreground">
-                Finding your perfect match is easy with our simple 4-step process
-              </p>
-            </div>
-
-            <div className="grid gap-8 md:grid-cols-4">
-              {[
-                {
-                  step: "01",
-                  title: "Create Profile",
-                  desc: "Sign up and complete your profile with your preferences",
-                },
-                {
-                  step: "02",
-                  title: "Find Matches",
-                  desc: "Browse through compatible profiles matched by our AI algorithm",
-                },
-                { step: "03", title: "Connect", desc: "Send interest requests and start conversations with matches" },
-                {
-                  step: "04",
-                  title: "Meet & Marry",
-                  desc: "Take your relationship forward and find your life partner",
-                },
-              ].map((item, index) => (
-                <div key={index} className="relative text-center">
-                  <div className="mb-4 flex justify-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                      {item.step}
-                    </div>
-                  </div>
-                  <h3 className="mb-2 font-serif text-xl font-bold">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground">{item.desc}</p>
-                  {index < 3 && <ArrowRight className="absolute right-0 top-8 hidden h-6 w-6 text-primary md:block" />}
                 </div>
-              ))}
+
+                <Button className="bg-[#5C2E2E] text-white hover:bg-[#5C2E2E]/90">
+                  <Search className="mr-2 h-4 w-4" />
+                  Start your Search
+                </Button>
+              </div>
+
+              {/* Right Content - Image */}
+              <div className="relative overflow-hidden rounded-3xl">
+                <img
+                  src="/happy-african-couple.jpg"
+                  alt="How it works"
+                  className="h-full w-full object-contain"
+                />
+              </div>
             </div>
           </div>
         </section>
 
         {featuredProfiles.length > 0 && (
-          <section className="bg-background py-20">
+          <section id="featured-profiles" className="bg-white py-20">
             <div className="container mx-auto px-4">
-              <div className="mb-12 flex items-center justify-between">
-                <div>
-                  <h2 className="mb-2 font-serif text-3xl font-bold md:text-4xl">Featured Profiles</h2>
-                  <p className="text-muted-foreground">Discover verified and premium members</p>
-                </div>
-                <Link href="/search">
-                  <Button variant="outline">View All</Button>
-                </Link>
+              <div className="mb-12 text-center">
+                <h2 className="mb-4 font-serif text-4xl font-bold text-[#5C2E2E]">Featured Profiles</h2>
+                <p className="mx-auto max-w-2xl text-[#6B5B5B]">
+                  Handpicked for their uniqueness and compatibility, these profiles stand out in the crowd, offering a
+                  glimpse into the potential for remarkable connections.
+                </p>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {featuredProfiles.map((profile) => (
-                  <Link key={profile.id} href={`/profile/${profile.id}`}>
-                    <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-                      <div className="relative aspect-[3/4]">
-                        <img
-                          src={profile.profile_photo || "/placeholder.svg?height=400&width=300"}
-                          alt={profile.first_name}
-                          className="h-full w-full object-cover"
-                        />
-                        {profile.is_verified && (
-                          <Badge className="absolute right-2 top-2 bg-primary">
-                            <Check className="mr-1 h-3 w-3" />
-                            Verified
-                          </Badge>
-                        )}
+              <div className="relative">
+                <div className="grid gap-8 md:grid-cols-3">
+                  {featuredProfiles.slice(currentFeaturedIndex, currentFeaturedIndex + 3).map((profile) => (
+                    <div key={profile.id} className="text-center">
+                      <div className="mb-4 flex justify-center">
+                        <div className="relative h-32 w-32 overflow-hidden rounded-full border-4 border-white shadow-lg">
+                          <img
+                            src={profile.profile_photo || "/placeholder.svg?height=128&width=128"}
+                            alt={profile.first_name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
                       </div>
-                      <CardContent className="p-4">
-                        <h3 className="mb-1 font-serif text-lg font-bold">{profile.first_name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {profile.age} years • {profile.city}, {profile.country}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
+                      <h3 className="mb-1 font-serif text-xl font-bold text-[#5C2E2E]">{profile.first_name}</h3>
+                      <p className="mb-3 text-sm text-[#6B5B5B]">
+                        Active {formatDistanceToNow(new Date(profile.last_active || new Date()), { addSuffix: true })}
+                      </p>
+                      <Link href={`/profile/${profile.id}`}>
+                        <Button className="bg-[#5C2E2E] text-white hover:bg-[#5C2E2E]/90">See Profile</Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Navigation */}
+                <div className="mt-8 flex justify-center gap-4">
+                  <button
+                    onClick={prevFeaturedProfile}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#5C2E2E] text-[#5C2E2E] hover:bg-[#5C2E2E] hover:text-white"
+                    disabled={currentFeaturedIndex === 0}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextFeaturedProfile}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#5C2E2E] text-[#5C2E2E] hover:bg-[#5C2E2E] hover:text-white"
+                    disabled={currentFeaturedIndex + 3 >= featuredProfiles.length}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </section>
         )}
 
         {packages.length > 0 && (
-          <section className="bg-primary py-20 text-primary-foreground">
+          <section id="packages" className="bg-gradient-to-b from-white to-[#FAF8F5] py-20">
             <div className="container mx-auto px-4">
               <div className="mb-12 text-center">
-                <h2 className="mb-4 font-serif text-3xl font-bold md:text-4xl">Choose Your Plan</h2>
-                <p className="mx-auto max-w-2xl text-primary-foreground/80">
-                  Select the perfect membership package to start your journey
+                <h2 className="mb-4 font-serif text-4xl font-bold text-[#5C2E2E]">Elevate Your Membership</h2>
+                <p className="mx-auto max-w-2xl text-[#6B5B5B]">
+                  Unlock exclusive features, premium benefits, and a personalized approach to make your experience truly
+                  exceptional. Embark on a new chapter of enriched connections and lasting relationships.
                 </p>
               </div>
 
-              <div className="grid gap-8 md:grid-cols-3">
-                {packages.map((pkg, index) => (
-                  <Card key={pkg.id} className={`${index === 1 ? "border-2 border-accent" : ""}`}>
-                    <CardContent className="p-8 text-center">
-                      {index === 1 && <Badge className="mb-4 bg-accent text-accent-foreground">Most Popular</Badge>}
-                      <h3 className="mb-2 font-serif text-2xl font-bold">{pkg.name}</h3>
+              <div className="relative mx-auto max-w-5xl">
+                <div className="grid gap-8 md:grid-cols-3">
+                  {packages.map((pkg, index) => (
+                    <div
+                      key={pkg.id}
+                      className={`relative rounded-3xl border-2 bg-white p-8 text-center ${index === 1 ? "border-[#5C2E2E] shadow-xl" : "border-[#E5D5C5]"
+                        }`}
+                    >
+                      {index === 1 && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="rounded-full bg-[#5C2E2E] px-4 py-1 text-sm text-white">Most popular</span>
+                        </div>
+                      )}
+
+                      <h3 className="mb-4 font-serif text-2xl font-bold text-[#5C2E2E]">{pkg.name}</h3>
+
                       <div className="mb-6">
-                        <span className="font-serif text-4xl font-bold">${pkg.price}</span>
-                        <span className="text-muted-foreground">/month</span>
+                        <span className="font-serif text-5xl font-bold text-[#5C2E2E]">${pkg.price}</span>
+                        <span className="text-[#6B5B5B]">/Monthly</span>
                       </div>
-                      <ul className="mb-6 space-y-2 text-left text-sm">
-                        {Object.entries(pkg.features)
+
+                      <ul className="mb-8 space-y-3 text-left">
+                        {Object.entries(pkg.features || {})
                           .slice(0, 4)
                           .map(([key, value]: [string, any]) => (
-                            <li key={key} className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-primary" />
-                              <span>{key.replace(/_/g, " ")}</span>
+                            <li key={key} className="flex items-center gap-2 text-[#6B5B5B]">
+                              <Check className="h-5 w-5 flex-shrink-0 text-[#5C2E2E]" />
+                              <span className="text-sm">
+                                {key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </span>
                             </li>
                           ))}
                       </ul>
-                      <Link href="/membership">
-                        <Button className="w-full">Get Started</Button>
+
+                      <Link href="/dashboard/plan">
+                        <Button
+                          className={`w-full ${index === 1
+                            ? "bg-[#5C2E2E] text-white hover:bg-[#5C2E2E]/90"
+                            : "bg-[#C4A57B] text-white hover:bg-[#C4A57B]/90"
+                            }`}
+                        >
+                          Get Started
+                        </Button>
                       </Link>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-8 text-center">
+                  <Link href="/dashboard/plan">
+                    <Button
+                      variant="outline"
+                      className="border-[#5C2E2E] text-[#5C2E2E] hover:bg-[#5C2E2E]/10 bg-transparent"
+                    >
+                      Find out more
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </section>
         )}
 
         {testimonials.length > 0 && (
-          <section className="bg-background py-20">
+          <section id="success-stories" className="bg-white py-20">
             <div className="container mx-auto px-4">
               <div className="mb-12 text-center">
-                <h2 className="mb-4 font-serif text-3xl font-bold md:text-4xl">Love Found: Success Stories</h2>
-                <p className="mx-auto max-w-2xl text-muted-foreground">
-                  Real couples who found their forever love through African Nuptials
-                </p>
-              </div>
-
-              <div className="grid gap-8 md:grid-cols-3">
-                {testimonials.map((testimonial) => (
-                  <Card key={testimonial.id} className="bg-primary/5">
-                    <CardContent className="p-6">
-                      <div className="mb-4 flex gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                        ))}
-                      </div>
-                      <p className="mb-4 text-sm italic">{testimonial.story}</p>
-                      <div className="flex items-center gap-3">
-                        {testimonial.image && (
-                          <img
-                            src={testimonial.image || "/placeholder.svg"}
-                            alt={testimonial.partner_name}
-                            className="h-12 w-12 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <p className="font-semibold">{testimonial.partner_name}</p>
-                          {testimonial.location && (
-                            <p className="text-xs text-muted-foreground">{testimonial.location}</p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {articles.length > 0 && (
-          <section className="bg-secondary/30 py-20">
-            <div className="container mx-auto px-4">
-              <div className="mb-12 flex items-center justify-between">
-                <div>
-                  <h2 className="mb-2 font-serif text-3xl font-bold md:text-4xl">Latest Articles</h2>
-                  <p className="text-muted-foreground">Tips and insights for your journey</p>
+                <div className="mb-2 text-sm text-[#C4A57B]">
+                  <span className="inline-block h-px w-12 bg-[#C4A57B]"></span> Matrimonial Platform with Countless
+                  Stories of Successful Unions
                 </div>
-                <Link href="/articles">
-                  <Button variant="outline">View All</Button>
-                </Link>
+                <h2 className="font-serif text-4xl font-bold text-[#5C2E2E]">
+                  Love Found: <span className="text-[#C4A57B]">Millions Success Stories Unveiled.</span>
+                </h2>
               </div>
 
-              <div className="grid gap-8 md:grid-cols-3">
-                {articles.map((article) => (
-                  <Link key={article.id} href={`/articles/${article.slug}`}>
-                    <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-                      {article.cover_image && (
-                        <div className="aspect-video overflow-hidden">
-                          <img
-                            src={article.cover_image || "/placeholder.svg"}
-                            alt={article.title}
-                            className="h-full w-full object-cover transition-transform hover:scale-105"
-                          />
+              <div className="relative">
+                <div className="grid gap-6 md:grid-cols-3">
+                  {testimonials.slice(currentTestimonialIndex, currentTestimonialIndex + 3).map((testimonial) => (
+                    <Card
+                      key={testimonial.id}
+                      className="overflow-hidden border-none bg-gradient-to-br from-[#5C2E2E] to-[#7D4E4E] text-white"
+                    >
+                      <CardContent className="p-8">
+                        <div className="mb-6 text-6xl font-serif opacity-50">"</div>
+                        <p className="mb-6 text-sm leading-relaxed">{testimonial.story}</p>
+                        <div className="flex items-center gap-3">
+                          {testimonial.image && (
+                            <img
+                              src={testimonial.image || "/placeholder.svg"}
+                              alt={testimonial.partner_name}
+                              className="h-12 w-12 rounded-full object-cover"
+                            />
+                          )}
+                          <div>
+                            <p className="font-semibold">{testimonial.partner_name}</p>
+                            {testimonial.location && <p className="text-xs opacity-80">{testimonial.location}</p>}
+                          </div>
                         </div>
-                      )}
-                      <CardContent className="p-6">
-                        <h3 className="mb-2 font-serif text-xl font-bold line-clamp-2">{article.title}</h3>
-                        <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
-                        </p>
                       </CardContent>
                     </Card>
-                  </Link>
-                ))}
+                  ))}
+                </div>
+
+                {/* Navigation */}
+                <div className="mt-8 flex justify-center gap-2">
+                  <button
+                    onClick={prevTestimonial}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5C2E2E] text-white shadow-lg hover:bg-[#5C2E2E]/90"
+                    disabled={currentTestimonialIndex === 0}
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={nextTestimonial}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5C2E2E] text-white shadow-lg hover:bg-[#5C2E2E]/90"
+                    disabled={currentTestimonialIndex + 3 >= testimonials.length}
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Pagination dots */}
+                <div className="mt-4 flex justify-center gap-2">
+                  {Array.from({ length: Math.ceil(testimonials.length / 3) }).map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentTestimonialIndex(index * 3)}
+                      className={`h-2 rounded-full transition-all ${currentTestimonialIndex === index * 3 ? "w-8 bg-[#5C2E2E]" : "w-2 bg-[#C4A57B]/30"
+                        }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </section>
         )}
 
-        <section className="bg-primary py-20 text-primary-foreground">
+        <section id="faq" className="bg-[#F5F1ED] py-20">
+          <div className="container mx-auto max-w-4xl px-4">
+            <div className="mb-4 text-center text-sm text-[#C4A57B]">
+              <span className="inline-block h-px w-12 bg-[#C4A57B]"></span> FAQ
+            </div>
+            <FAQSection />
+          </div>
+        </section>
+
+        <section id="newsletter" className="bg-white py-20">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="mb-4 font-serif text-3xl font-bold md:text-4xl">Subscribe To Our Newsletter</h2>
-              <p className="mb-8 text-primary-foreground/80">
-                Stay updated with the latest tips, success stories, and exclusive offers
-              </p>
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-4">
+              <p className="mb-2 text-sm text-[#C4A57B]">Instant notifications</p>
+              <h2 className="mb-4 font-serif text-4xl font-bold text-[#5C2E2E]">
+                Subscribe To Our Newsletter To Always Be In The Loop
+              </h2>
+              <form onSubmit={handleNewsletterSubmit} className="mt-8 flex gap-0">
                 <Input
                   type="email"
                   placeholder="Enter your email"
-                  className="flex-1 border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/50"
+                  className="flex-1 rounded-r-none border-2 border-r-0 border-[#5C2E2E] bg-white text-[#5C2E2E] placeholder:text-[#6B5B5B]"
                   required
                 />
-                <Button type="submit" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90">
+                <Button type="submit" className="rounded-l-none bg-[#5C2E2E] px-8 text-white hover:bg-[#5C2E2E]/90">
                   Subscribe
                 </Button>
               </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="bg-[#F5F1ED] py-20">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="mb-4 font-serif text-3xl font-bold text-[#5C2E2E] md:text-4xl">Get In Touch</h2>
+              <p className="mb-8 text-[#6B5B5B]">
+                Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+              </p>
+
+              <div className="grid gap-6 md:grid-cols-3">
+                <Card className="border-[#E5D5C5] bg-white">
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-3 flex justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5C2E2E]/10">
+                        <svg className="h-6 w-6 text-[#5C2E2E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="mb-1 font-semibold text-[#5C2E2E]">Email</h3>
+                    <p className="text-sm text-[#6B5B5B]">sales@africannuptials.com</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-[#E5D5C5] bg-white">
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-3 flex justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5C2E2E]/10">
+                        <svg className="h-6 w-6 text-[#5C2E2E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="mb-1 font-semibold text-[#5C2E2E]">Phone</h3>
+                    <p className="text-sm text-[#6B5B5B]">+(8) 123-56 7890</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-[#E5D5C5] bg-white">
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-3 flex justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5C2E2E]/10">
+                        <svg className="h-6 w-6 text-[#5C2E2E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="mb-1 font-semibold text-[#5C2E2E]">Support</h3>
+                    <p className="text-sm text-[#6B5B5B]">Toll Free Worldwide</p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </section>

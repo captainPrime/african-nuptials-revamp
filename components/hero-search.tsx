@@ -53,7 +53,7 @@ export function HeroSearch() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <svg
               width="16"
               height="16"
@@ -71,10 +71,10 @@ export function HeroSearch() {
             I'm looking for a
           </label>
           <Select value={lookingFor} onValueChange={setLookingFor}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full text-foreground">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="text-foreground">
               <SelectItem value="woman">Woman</SelectItem>
               <SelectItem value="man">Man</SelectItem>
             </SelectContent>
@@ -82,7 +82,7 @@ export function HeroSearch() {
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <svg
               width="16"
               height="16"
@@ -98,10 +98,10 @@ export function HeroSearch() {
           </label>
           <div className="flex items-center gap-2">
             <Select value={ageFrom} onValueChange={setAgeFrom}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full text-foreground">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-foreground">
                 {Array.from({ length: 63 }, (_, i) => i + 18).map((age) => (
                   <SelectItem key={age} value={age.toString()}>
                     {age}
@@ -111,10 +111,10 @@ export function HeroSearch() {
             </Select>
             <span className="text-sm text-muted-foreground">to</span>
             <Select value={ageTo} onValueChange={setAgeTo}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full text-foreground">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-foreground">
                 {Array.from({ length: 63 }, (_, i) => i + 18).map((age) => (
                   <SelectItem key={age} value={age.toString()}>
                     {age}
@@ -126,7 +126,7 @@ export function HeroSearch() {
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <svg
               width="16"
               height="16"
@@ -140,10 +140,10 @@ export function HeroSearch() {
             of religion
           </label>
           <Select value={religion} onValueChange={setReligion}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full text-foreground">
               <SelectValue placeholder="Please select" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="text-foreground">
               <SelectItem value="christianity">Christianity</SelectItem>
               <SelectItem value="islam">Islam</SelectItem>
               <SelectItem value="traditional">Traditional</SelectItem>
@@ -153,7 +153,7 @@ export function HeroSearch() {
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <svg
               width="16"
               height="16"
@@ -173,10 +173,10 @@ export function HeroSearch() {
             and living in
           </label>
           <Select value={location} onValueChange={setLocation}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full text-foreground">
               <SelectValue placeholder="Please select" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="text-foreground">
               <SelectItem value="nigeria">Nigeria</SelectItem>
               <SelectItem value="ghana">Ghana</SelectItem>
               <SelectItem value="kenya">Kenya</SelectItem>

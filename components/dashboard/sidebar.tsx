@@ -162,6 +162,7 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: User, label: "Profile", href: "/dashboard/profile" },
+  { icon: Heart, label: "Matches", href: "/dashboard/matches" },
   { icon: Heart, label: "Interests", href: "/dashboard/interests" },
   { icon: Users, label: "Friends", href: "/dashboard/friends" },
   { icon: MessageSquare, label: "Chat list", href: "/dashboard/chat" },
