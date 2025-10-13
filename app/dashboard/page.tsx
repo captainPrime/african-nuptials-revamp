@@ -403,6 +403,7 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </div>
+
               {newMatches.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                   {newMatches.slice(currentMatchIndex, currentMatchIndex + 5).map((matchScore) => {
@@ -411,28 +412,42 @@ export default function DashboardPage() {
                       ? new Date().getFullYear() - new Date(match.date_of_birth).getFullYear()
                       : null
                     const isFriend = friendships.has(match.id)
+
                     return (
                       <Card
                         key={match.id}
-                        className="group cursor-pointer overflow-hidden border-none shadow-sm transition-all hover:shadow-md"
+                        className="group relative cursor-pointer overflow-hidden border-none shadow-sm transition-all hover:shadow-md rounded-xl"
                         onClick={() => router.push(`/profile/${match.id}`)}
                       >
-                        <div className="relative aspect-[3/4]">
+                        {/* Profile Image + Overlay */}
+                        <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden">
+                          {/* Background Image */}
                           <img
                             src={match.profile_photo || "/placeholder.svg?height=400&width=300"}
                             alt={match.first_name}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
                           />
-                          <div className="absolute right-2 top-2 flex flex-col gap-1">
-                            <Badge className="bg-green-500 text-xs font-semibold text-white">
+
+                          {/* Brown overlay */}
+                          <div className="absolute inset-0 rounded-xl bg-[#551c22]/40 mix-blend-multiply transition-opacity duration-300 group-hover:bg-[#551c22]/60" />
+
+                          {/* Badges (top-right) */}
+                          <div className="absolute right-2 top-2 z-10 flex flex-col gap-1">
+                            <Badge className="bg-green-500 text-xs font-semibold text-white shadow-md">
                               {Math.round(matchScore.compatibility_score)}% Match
                             </Badge>
-                            {isFriend && <Badge className="bg-blue-500 text-xs font-semibold text-white">Friend</Badge>}
+                            {isFriend && (
+                              <Badge className="bg-blue-500 text-xs font-semibold text-white shadow-md">
+                                Friend
+                              </Badge>
+                            )}
                           </div>
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 text-white">
-                            <p className="font-semibold">{match.first_name}</p>
+
+                          {/* Bottom overlay with text */}
+                          <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 text-white">
+                            <p className="font-semibold text-base">{match.first_name}</p>
                             <p className="text-xs opacity-90">
-                              {match.living_in} | {age} yrs old
+                              {match.living_in} {age && `| ${age} yrs old`}
                             </p>
                           </div>
                         </div>
@@ -443,6 +458,7 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
