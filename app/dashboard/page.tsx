@@ -270,9 +270,9 @@ export default function DashboardPage() {
       <Card className="border-none shadow-sm">
         <CardContent className="p-6">
           <Tabs defaultValue="advance" className="w-full">
-            <TabsList className="mb-6 grid w-full max-w-md grid-cols-2">
+            <TabsList className="mb-6 grid w-full max-w-md grid-cols-1">
               <TabsTrigger value="advance">Advance Search</TabsTrigger>
-              <TabsTrigger value="profile-id">Profile ID Search</TabsTrigger>
+              {/* <TabsTrigger value="profile-id">Profile ID Search</TabsTrigger> */}
             </TabsList>
             <TabsContent value="advance">
               <div className="grid gap-4 md:grid-cols-4">
@@ -420,7 +420,7 @@ export default function DashboardPage() {
                         onClick={() => router.push(`/profile/${match.id}`)}
                       >
                         {/* Profile Image + Overlay */}
-                        <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden">
+                        <div className="relative w-full aspect-[3/5] rounded-xl overflow-hidden">
                           {/* Background Image */}
                           <img
                             src={match.profile_photo || "/placeholder.svg?height=400&width=300"}

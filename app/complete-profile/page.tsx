@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import type { ProfileCreatedFor, Gender } from "@/lib/types/profile"
-import { ChevronLeft, Loader2, AlertCircle } from "lucide-react"
+import { ChevronLeft, Loader2, AlertCircle, Check } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-type ProfileStep = "profile-for" | "name-dob" | "details"
+type ProfileStep = "profile-for" | "name-dob" | "details" | "package-selection"
 
 export default function CompleteProfilePage() {
   const [step, setStep] = useState<ProfileStep>("profile-for")
@@ -36,6 +36,11 @@ export default function CompleteProfilePage() {
   const [religion, setReligion] = useState("")
   const [community, setCommunity] = useState("")
   const [livingIn, setLivingIn] = useState("")
+
+  // Package selection state
+  const [selectedPackage, setSelectedPackage] = useState<string>("basic")
+  const [packages, setPackages] = useState<any[]>([])
+  const [showPayment, setShowPayment] = useState(false)
 
   // Check if user is authenticated
   useEffect(() => {
@@ -77,9 +82,18 @@ export default function CompleteProfilePage() {
     checkUser()
   }, [supabase, router, toast])
 
+  useEffect(() => {
+    async function fetchPackages() {
+      const { data } = await supabase.from("subscription_packages").select("*").eq("is_active", true).order("price")
+      if (data) setPackages(data)
+    }
+    fetchPackages()
+  }, [])
+
   const handleBack = () => {
     if (step === "name-dob") setStep("profile-for")
     else if (step === "details") setStep("name-dob")
+    else if (step === "package-selection") setStep("details")
   }
 
   const handleProfileForSubmit = (e: React.FormEvent) => {
@@ -111,6 +125,10 @@ export default function CompleteProfilePage() {
       return
     }
 
+    setStep("package-selection")
+  }
+
+  const handlePackageSelection = async () => {
     setLoading(true)
 
     try {
@@ -124,6 +142,7 @@ export default function CompleteProfilePage() {
 
       const dateOfBirth = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
 
+      // Create profile
       const { error: profileError } = await supabase.from("profiles").insert({
         id: user.id,
         email: user.email!,
@@ -139,22 +158,38 @@ export default function CompleteProfilePage() {
         profile_completion: 30,
       })
 
-      if (profileError) {
-        if (profileError.code === "PGRST205") {
-          setDatabaseError(true)
-          throw new Error(
-            "Database tables are not set up. Please run the SQL scripts from the scripts folder in your Supabase SQL editor.",
-          )
+      if (profileError) throw profileError
+
+      // Get selected package
+      const selectedPkg = packages.find((p) => p.id === selectedPackage)
+
+      if (selectedPkg) {
+        // If free package, create subscription immediately
+        if (selectedPkg.price === 0) {
+          const endDate = new Date()
+          endDate.setMonth(endDate.getMonth() + selectedPkg.duration_months)
+
+          await supabase.from("user_subscriptions").insert({
+            user_id: user.id,
+            package_id: selectedPkg.id,
+            end_date: endDate.toISOString(),
+            is_active: true,
+            amount_paid: 0,
+            payment_status: "completed",
+            payment_method: "free",
+          })
+
+          toast({
+            title: "Profile created successfully!",
+            description: "Welcome to African Nuptials",
+          })
+
+          router.push("/dashboard")
+        } else {
+          // For paid packages, show payment UI
+          setShowPayment(true)
         }
-        throw profileError
       }
-
-      toast({
-        title: "Profile created successfully!",
-        description: "Welcome to African Nuptials",
-      })
-
-      router.push("/dashboard")
     } catch (error: any) {
       console.error("[v0] Profile creation error:", error)
       toast({
@@ -521,6 +556,71 @@ export default function CompleteProfilePage() {
                 {loading ? "Creating profile..." : "Complete Profile"}
               </Button>
             </form>
+          )}
+
+          {/* Step 4: Package Selection */}
+          {step === "package-selection" && (
+            <div className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <h2 className="text-center font-serif text-xl font-semibold">Choose Your Package</h2>
+                <p className="text-center text-sm text-gray-600">Select a subscription plan to get started</p>
+              </div>
+
+              <div className="space-y-3">
+                {packages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => setSelectedPackage(pkg.id)}
+                    className={`w-full rounded-lg border-2 p-4 text-left transition-colors ${
+                      selectedPackage === pkg.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold">{pkg.display_name}</h3>
+                        <p className="text-sm text-gray-600">{pkg.description}</p>
+                        <p className="mt-2 text-lg font-bold">
+                          {pkg.price === 0 ? "Free" : `$${pkg.price}/${pkg.duration_months}mo`}
+                        </p>
+                      </div>
+                      <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                          selectedPackage === pkg.id ? "border-primary bg-primary" : "border-border"
+                        }`}
+                      >
+                        {selectedPackage === pkg.id && <Check className="h-3 w-3 text-white" />}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <Button
+                onClick={handlePackageSelection}
+                disabled={loading || !selectedPackage}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {loading ? "Creating profile..." : "Continue"}
+              </Button>
+            </div>
+          )}
+
+          {/* Payment UI */}
+          {showPayment && (
+            <div className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <h2 className="text-center font-serif text-xl font-semibold">Complete Payment</h2>
+                <p className="text-center text-sm text-gray-600">
+                  Payment integration coming soon. For now, your profile has been created with basic access.
+                </p>
+              </div>
+              <Button onClick={() => router.push("/dashboard")} className="w-full">
+                Go to Dashboard
+              </Button>
+            </div>
           )}
         </div>
       </div>

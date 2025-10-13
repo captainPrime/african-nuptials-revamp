@@ -107,8 +107,8 @@ export default async function AdminDashboardPage() {
                     ))}
                 </div>
 
-                <div className="mt-8 grid gap-6 md:grid-cols-2">
-                    <Card>
+                <div className="mt-8 ">
+                    {/* <Card>
                         <CardHeader>
                             <CardTitle>Quick Actions</CardTitle>
                             <CardDescription>Common administrative tasks</CardDescription>
@@ -133,7 +133,7 @@ export default async function AdminDashboardPage() {
                                 </Button>
                             </Link>
                         </CardContent>
-                    </Card>
+                    </Card> */}
 
                     <Card>
                         <CardHeader>

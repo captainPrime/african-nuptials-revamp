@@ -8,7 +8,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary"
 import { useToast } from "@/hooks/use-toast"
 
 interface PhotoUploadProps {
-  onUploadComplete: (url: string) => void
+  onUploadComplete: (urls: string[]) => void
   maxFiles?: number
   currentPhotos?: string[]
 }
@@ -35,8 +35,9 @@ export function PhotoUpload({ onUploadComplete, maxFiles = 6, currentPhotos = []
     setUploading(true)
 
     try {
+      const uploadedUrls: string[] = []
+
       for (const file of files) {
-        // Validate file type
         if (!file.type.startsWith("image/")) {
           toast({
             title: "Invalid file type",
@@ -46,7 +47,6 @@ export function PhotoUpload({ onUploadComplete, maxFiles = 6, currentPhotos = []
           continue
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast({
             title: "File too large",
@@ -56,17 +56,17 @@ export function PhotoUpload({ onUploadComplete, maxFiles = 6, currentPhotos = []
           continue
         }
 
-        // Upload to Cloudinary
         const result = await uploadToCloudinary(file)
-        const newUrl = result.secure_url
-
-        setPreviews((prev) => [...prev, newUrl])
-        onUploadComplete(newUrl)
+        uploadedUrls.push(result.secure_url)
       }
+
+      const newPreviews = [...previews, ...uploadedUrls]
+      setPreviews(newPreviews)
+      onUploadComplete(newPreviews)
 
       toast({
         title: "Upload successful",
-        description: `${files.length} photo(s) uploaded successfully`,
+        description: `${uploadedUrls.length} photo(s) uploaded successfully`,
       })
     } catch (error) {
       console.error("[v0] Upload error:", error)
@@ -84,7 +84,9 @@ export function PhotoUpload({ onUploadComplete, maxFiles = 6, currentPhotos = []
   }
 
   const handleRemove = (index: number) => {
-    setPreviews((prev) => prev.filter((_, i) => i !== index))
+    const newPreviews = previews.filter((_, i) => i !== index)
+    setPreviews(newPreviews)
+    onUploadComplete(newPreviews)
   }
 
   return (

@@ -48,7 +48,7 @@ export function HeroSearch() {
         >
           Advance Search
         </button>
-        <button className="pb-3 text-sm font-medium text-muted-foreground">Profile ID Search</button>
+        {/* <button className="pb-3 text-sm font-medium text-muted-foreground">Profile ID Search</button> */}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

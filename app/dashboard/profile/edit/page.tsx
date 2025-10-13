@@ -106,8 +106,8 @@ export default function EditProfilePage() {
           })
           setProfilePhoto(data.profile_photo || "")
           setCoverPhoto(data.cover_photo || "")
-          setPhotoGallery(data.photo_gallery || [])
-          setHobbies(data.hobbies || [])
+          setPhotoGallery(Array.isArray(data.photo_gallery) ? data.photo_gallery : [])
+          setHobbies(Array.isArray(data.hobbies) ? data.hobbies : [])
         }
       }
       setLoading(false)
