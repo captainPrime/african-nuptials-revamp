@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import { Eye, Ban, CheckCircle, Search, Trash2, Edit, Plus, Package } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -52,11 +52,25 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
   const [editFormData, setEditFormData] = useState<Partial<Profile>>({})
 
   async function loadPackages() {
-    console.log("[v0] Loading packages...")
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase.from("subscription_packages").select("*").eq("is_active", true)
+    console.log("[v0] Loading packages for assignment...")
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from("subscription_packages")
+      .select("*")
+      .eq("is_active", true)
+      .order("price")
+
     console.log("[v0] Packages loaded:", data, "Error:", error)
-    if (data) setPackages(data)
+    if (data) {
+      setPackages(data)
+    } else {
+      console.error("[v0] Failed to load packages:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load packages",
+        variant: "destructive",
+      })
+    }
   }
 
   async function toggleUserStatus(userId: string, currentStatus: boolean) {
@@ -70,6 +84,32 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
       setUsers(users.map((user) => (user.id === userId ? { ...user, is_active: !currentStatus } : user)))
     } catch (error) {
       console.error("Error toggling user status:", error)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function toggleFeaturedStatus(userId: string, currentStatus: boolean) {
+    setLoading(userId)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("profiles").update({ is_featured: !currentStatus }).eq("id", userId)
+
+      if (error) throw error
+
+      setUsers(users.map((user) => (user.id === userId ? { ...user, is_featured: !currentStatus } : user)))
+
+      toast({
+        title: "Featured status updated",
+        description: `User ${!currentStatus ? "added to" : "removed from"} featured profiles`,
+      })
+    } catch (error) {
+      console.error("Error toggling featured status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update featured status",
+        variant: "destructive",
+      })
     } finally {
       setLoading(null)
     }
@@ -95,30 +135,48 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
   }
 
   async function assignPackage() {
-    if (!assignPackageUserId || !selectedPackageId) return
+    if (!assignPackageUserId || !selectedPackageId) {
+      toast({
+        title: "Error",
+        description: "Please select a package",
+        variant: "destructive",
+      })
+      return
+    }
 
     setLoading(assignPackageUserId)
     try {
       const supabase = createClient()
 
-      await supabase
+      console.log("[v0] Assigning package:", selectedPackageId, "to user:", assignPackageUserId)
+
+      const { error: deactivateError } = await supabase
         .from("user_subscriptions")
         .update({ is_active: false })
         .eq("user_id", assignPackageUserId)
         .eq("is_active", true)
 
-      const { data: packageData } = await supabase
+      if (deactivateError) {
+        console.error("[v0] Error deactivating subscriptions:", deactivateError)
+      }
+
+      const { data: packageData, error: packageError } = await supabase
         .from("subscription_packages")
         .select("*")
         .eq("id", selectedPackageId)
         .single()
 
-      if (!packageData) throw new Error("Package not found")
+      if (packageError || !packageData) {
+        console.error("[v0] Error fetching package:", packageError)
+        throw new Error("Package not found")
+      }
+
+      console.log("[v0] Package data:", packageData)
 
       const endDate = new Date()
       endDate.setMonth(endDate.getMonth() + packageData.duration_months)
 
-      const { error } = await supabase.from("user_subscriptions").insert({
+      const { error: insertError } = await supabase.from("user_subscriptions").insert({
         user_id: assignPackageUserId,
         package_id: selectedPackageId,
         end_date: endDate.toISOString(),
@@ -128,7 +186,21 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
         payment_method: "admin_assigned",
       })
 
-      if (error) throw error
+      if (insertError) {
+        console.error("[v0] Error inserting subscription:", insertError)
+        throw insertError
+      }
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ membership_plan: packageData.name })
+        .eq("id", assignPackageUserId)
+
+      if (updateError) {
+        console.error("[v0] Error updating profile:", updateError)
+      }
+
+      console.log("[v0] Package assigned successfully")
 
       toast({
         title: "Package assigned",
@@ -138,11 +210,11 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
       setAssignPackageUserId(null)
       setSelectedPackageId("")
       router.refresh()
-    } catch (error) {
-      console.error("Error assigning package:", error)
+    } catch (error: any) {
+      console.error("[v0] Error assigning package:", error)
       toast({
         title: "Error",
-        description: "Failed to assign package",
+        description: error.message || "Failed to assign package",
         variant: "destructive",
       })
     } finally {
@@ -216,6 +288,7 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
               <TableHead>Gender</TableHead>
               <TableHead>Package</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Featured</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -236,6 +309,15 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
                 <TableCell>
                   <Badge variant={user.is_active ? "default" : "destructive"}>
                     {user.is_active ? "Active" : "Deactivated"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={user.is_featured ? "default" : "secondary"}
+                    className="cursor-pointer"
+                    onClick={() => toggleFeaturedStatus(user.id, user.is_featured || false)}
+                  >
+                    {user.is_featured ? "Featured" : "Not Featured"}
                   </Badge>
                 </TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
@@ -398,9 +480,11 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
 
       <Dialog
         open={!!assignPackageUserId}
-        onOpenChange={() => {
-          setAssignPackageUserId(null)
-          setSelectedPackageId("")
+        onOpenChange={(open) => {
+          if (!open) {
+            setAssignPackageUserId(null)
+            setSelectedPackageId("")
+          }
         }}
       >
         <DialogContent>
@@ -417,7 +501,7 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {packages.length === 0 ? (
-                    <div className="p-2 text-sm text-gray-500">No packages available</div>
+                    <div className="p-2 text-sm text-gray-500">Loading packages...</div>
                   ) : (
                     packages.map((pkg) => (
                       <SelectItem key={pkg.id} value={pkg.id}>
@@ -427,7 +511,7 @@ export function AdminUsersTable({ users: initialUsers }: AdminUsersTableProps) {
                   )}
                 </SelectContent>
               </Select>
-              {packages.length === 0 && <p className="text-sm text-gray-500">Loading packages...</p>}
+              {packages.length === 0 && <p className="text-sm text-gray-500">Click to load packages...</p>}
             </div>
           </div>
           <DialogFooter>
