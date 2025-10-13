@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
+import { Pagination } from "@/components/ui/pagination"
 import {
   MapPin,
   Briefcase,
@@ -27,6 +28,8 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { getCompatibleMatches, type MatchScore } from "@/lib/utils/matching-algorithm"
 
+const ITEMS_PER_PAGE = 10
+
 export default function MatchesPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [matches, setMatches] = useState<MatchScore[]>([])
@@ -34,61 +37,68 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [friendships, setFriendships] = useState<Set<string>>(new Set())
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalMatches, setTotalMatches] = useState(0)
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    const fetchMatches = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    fetchMatches()
+  }, [currentPage])
 
-      if (!user) {
-        router.push("/")
-        return
-      }
+  const fetchMatches = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-      if (profile) setCurrentUser(profile)
-
-      const compatibleMatches = await getCompatibleMatches(user.id, 50)
-      setMatches(compatibleMatches)
-
-      const { data: acceptedRequests } = await supabase
-        .from("interest_requests")
-        .select("sender_id, receiver_id")
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .eq("status", "accepted")
-
-      if (acceptedRequests) {
-        const friendSet = new Set<string>()
-        acceptedRequests.forEach((req) => {
-          const friendId = req.sender_id === user.id ? req.receiver_id : req.sender_id
-          friendSet.add(friendId)
-        })
-        setFriendships(friendSet)
-      }
-
-      const { data: pendingRequestsData } = await supabase
-        .from("interest_requests")
-        .select("receiver_id")
-        .eq("sender_id", user.id)
-        .eq("status", "pending")
-
-      if (pendingRequestsData) {
-        const pendingSet = new Set<string>()
-        pendingRequestsData.forEach((req) => {
-          pendingSet.add(req.receiver_id)
-        })
-        setPendingRequests(pendingSet)
-      }
-
-      setLoading(false)
+    if (!user) {
+      router.push("/")
+      return
     }
 
-    fetchMatches()
-  }, [supabase, router])
+    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+    if (profile) setCurrentUser(profile)
+
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE
+    const compatibleMatches = await getCompatibleMatches(user.id, ITEMS_PER_PAGE, offset)
+    setMatches(compatibleMatches)
+
+    const allMatches = await getCompatibleMatches(user.id, 1000)
+    setTotalMatches(allMatches.length)
+
+    const { data: acceptedRequests } = await supabase
+      .from("interest_requests")
+      .select("sender_id, receiver_id")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .eq("status", "accepted")
+
+    if (acceptedRequests) {
+      const friendSet = new Set<string>()
+      acceptedRequests.forEach((req) => {
+        const friendId = req.sender_id === user.id ? req.receiver_id : req.sender_id
+        friendSet.add(friendId)
+      })
+      setFriendships(friendSet)
+    }
+
+    const { data: pendingRequestsData } = await supabase
+      .from("interest_requests")
+      .select("receiver_id")
+      .eq("sender_id", user.id)
+      .eq("status", "pending")
+
+    if (pendingRequestsData) {
+      const pendingSet = new Set<string>()
+      pendingRequestsData.forEach((req) => {
+        pendingSet.add(req.receiver_id)
+      })
+      setPendingRequests(pendingSet)
+    }
+
+    setLoading(false)
+  }
 
   const handleSendInterest = async (profileId: string) => {
     if (!currentUser) return
@@ -158,6 +168,8 @@ export default function MatchesPage() {
     }
   }
 
+  const totalPages = Math.ceil(totalMatches / ITEMS_PER_PAGE)
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -172,7 +184,7 @@ export default function MatchesPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold">Your Matches</h1>
           <p className="text-muted-foreground">
-            {matches.length} compatible {matches.length === 1 ? "match" : "matches"} found
+            {totalMatches} compatible {totalMatches === 1 ? "match" : "matches"} found
           </p>
         </div>
       </div>
@@ -275,6 +287,16 @@ export default function MatchesPage() {
         })}
       </div>
 
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          itemsPerPage={ITEMS_PER_PAGE}
+          totalItems={totalMatches}
+        />
+      )}
+
       <Sheet open={!!selectedMatch} onOpenChange={() => setSelectedMatch(null)}>
         <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg">
           {selectedMatch && (
@@ -283,7 +305,7 @@ export default function MatchesPage() {
                 <SheetTitle className="sr-only">Profile Preview</SheetTitle>
               </SheetHeader>
 
-              <div className="space-y-6">
+              <div className="space-y-6 p-4">
                 <div className="relative">
                   <div className="aspect-[4/5] overflow-hidden rounded-xl">
                     <img

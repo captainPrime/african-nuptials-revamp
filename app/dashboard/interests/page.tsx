@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { InterestRequest } from "@/lib/types/profile"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Pagination } from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { MapPin, Briefcase, Ruler, X } from "lucide-react"
+import { InterestRequestCard } from "@/components/interest-request-card"
+
+const ITEMS_PER_PAGE = 10
 
 export default function InterestsPage() {
   const [requests, setRequests] = useState<InterestRequest[]>([])
@@ -18,13 +18,15 @@ export default function InterestsPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("new")
   const [currentUserId, setCurrentUserId] = useState<string>("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalRequests, setTotalRequests] = useState(0)
   const supabase = getSupabaseBrowserClient()
   const { toast } = useToast()
   const router = useRouter()
 
   useEffect(() => {
     fetchRequests()
-  }, [])
+  }, [currentPage, activeTab])
 
   const fetchRequests = async () => {
     try {
@@ -35,7 +37,9 @@ export default function InterestsPage() {
 
       setCurrentUserId(user.id)
 
-      const { data, error } = await supabase
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE
+
+      const { data, error, count } = await supabase
         .from("interest_requests")
         .select(
           `
@@ -43,15 +47,22 @@ export default function InterestsPage() {
           sender:profiles!interest_requests_sender_id_fkey(*),
           receiver:profiles!interest_requests_receiver_id_fkey(*)
         `,
+          { count: "exact" },
         )
         .eq("receiver_id", user.id)
         .neq("sender_id", user.id)
         .order("created_at", { ascending: false })
+        .range(offset, offset + ITEMS_PER_PAGE - 1)
 
       if (error) throw error
       setRequests(data || [])
+      setTotalRequests(count || 0)
 
-      const { data: sent, error: sentError } = await supabase
+      const {
+        data: sent,
+        error: sentError,
+        count: sentCount,
+      } = await supabase
         .from("interest_requests")
         .select(
           `
@@ -59,10 +70,12 @@ export default function InterestsPage() {
           sender:profiles!interest_requests_sender_id_fkey(*),
           receiver:profiles!interest_requests_receiver_id_fkey(*)
         `,
+          { count: "exact" },
         )
         .eq("sender_id", user.id)
         .neq("receiver_id", user.id)
         .order("created_at", { ascending: false })
+        .range(offset, offset + ITEMS_PER_PAGE - 1)
 
       if (sentError) throw sentError
       setSentRequests(sent || [])
@@ -148,124 +161,12 @@ export default function InterestsPage() {
   const acceptedRequests = requests.filter((r) => r.status === "accepted")
   const deniedRequests = requests.filter((r) => r.status === "denied")
 
-  const RequestCard = ({ request, isSent = false }: { request: InterestRequest; isSent?: boolean }) => {
-    const sender = request.sender
-    const receiver = request.receiver
-    const profile = isSent ? receiver : sender
-    if (!profile) return null
-
-    const age = profile.date_of_birth ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() : null
-
-    const isOwnSentRequest = isSent && request.sender_id === currentUserId
-
-    return (
-      <Card className="mb-4">
-        <CardContent className="flex items-center gap-4 p-4">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-            <AvatarFallback className="bg-primary text-lg text-primary-foreground">
-              {profile.first_name?.[0]}
-              {profile.last_name?.[0]}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="flex-1">
-            <div className="mb-2 flex items-start justify-between">
-              <div>
-                <h3 className="font-serif text-lg font-semibold">
-                  {profile.first_name} {profile.last_name}
-                </h3>
-                <div className="mt-1 flex flex-wrap gap-3 text-sm text-muted-foreground">
-                  {profile.living_in && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>City: {profile.living_in}</span>
-                    </div>
-                  )}
-                  {age && (
-                    <div className="flex items-center gap-1">
-                      <span>Age: {age}</span>
-                    </div>
-                  )}
-                  {profile.height && (
-                    <div className="flex items-center gap-1">
-                      <Ruler className="h-3 w-3" />
-                      <span>Height: {profile.height}</span>
-                    </div>
-                  )}
-                  {profile.profession && (
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="h-3 w-3" />
-                      <span>Job: {profile.profession}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {!isSent && sender && sender.membership_plan !== "free" && (
-                <Badge variant="secondary" className="bg-primary/10 text-primary">
-                  {sender.membership_plan}
-                </Badge>
-              )}
-              {isSent && (
-                <Badge
-                  variant="secondary"
-                  className={
-                    request.status === "accepted"
-                      ? "bg-green-100 text-green-700"
-                      : request.status === "denied"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-yellow-100 text-yellow-700"
-                  }
-                >
-                  {request.status}
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button size="sm" variant="outline" onClick={() => router.push(`/profile/${profile.id}`)}>
-                View full profile
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {isSent ? "Sent on" : "Request on"}:{" "}
-                {new Date(request.created_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
-          </div>
-
-          {!isSent && request.status === "pending" && sender && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="bg-[#ffe8ea] text-primary hover:bg-[#ffd6da]"
-                onClick={() => handleAccept(request.id)}
-              >
-                Accept
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDeny(request.id)}>
-                Deny
-              </Button>
-            </div>
-          )}
-
-          {isSent && request.status === "pending" && isOwnSentRequest && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-destructive/20 text-destructive hover:bg-destructive/10 bg-transparent"
-              onClick={() => handleCancelRequest(request.id)}
-            >
-              <X className="mr-1 h-4 w-4" />
-              Cancel
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    )
+  const getTotalPages = () => {
+    if (activeTab === "new") return Math.ceil(newRequests.length / ITEMS_PER_PAGE)
+    if (activeTab === "accepted") return Math.ceil(acceptedRequests.length / ITEMS_PER_PAGE)
+    if (activeTab === "denied") return Math.ceil(deniedRequests.length / ITEMS_PER_PAGE)
+    if (activeTab === "sent") return Math.ceil(sentRequests.length / ITEMS_PER_PAGE)
+    return 1
   }
 
   if (loading) {
@@ -277,11 +178,17 @@ export default function InterestsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6">
-      <h1 className="mb-6 font-serif text-2xl font-bold">Interest request</h1>
+    <div className="mx-auto max-w-4xl px-3 sm:px-6">
+      <h1 className="mb-4 sm:mb-6 font-serif text-xl sm:text-2xl font-bold">Interest request</h1>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value)
+          setCurrentPage(1)
+        }}
+      >
+        <TabsList className="mb-4 sm:mb-6 grid h-auto w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-0">
           <TabsTrigger value="new" className="text-xs sm:text-sm">
             New
           </TabsTrigger>
@@ -300,11 +207,34 @@ export default function InterestsPage() {
           {newRequests.length === 0 ? (
             <Card>
               <CardContent className="flex h-40 items-center justify-center">
-                <p className="text-muted-foreground">No new requests</p>
+                <p className="text-sm text-muted-foreground">No new requests</p>
               </CardContent>
             </Card>
           ) : (
-            newRequests.map((request) => <RequestCard key={request.id} request={request} />)
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {newRequests.map((request) => (
+                  <InterestRequestCard
+                    key={request.id}
+                    request={request}
+                    currentUserId={currentUserId}
+                    onAccept={handleAccept}
+                    onDeny={handleDeny}
+                  />
+                ))}
+              </div>
+              {getTotalPages() > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={newRequests.length}
+                  />
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -312,11 +242,28 @@ export default function InterestsPage() {
           {acceptedRequests.length === 0 ? (
             <Card>
               <CardContent className="flex h-40 items-center justify-center">
-                <p className="text-muted-foreground">No accepted requests</p>
+                <p className="text-sm text-muted-foreground">No accepted requests</p>
               </CardContent>
             </Card>
           ) : (
-            acceptedRequests.map((request) => <RequestCard key={request.id} request={request} />)
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {acceptedRequests.map((request) => (
+                  <InterestRequestCard key={request.id} request={request} currentUserId={currentUserId} />
+                ))}
+              </div>
+              {getTotalPages() > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={acceptedRequests.length}
+                  />
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -324,11 +271,28 @@ export default function InterestsPage() {
           {deniedRequests.length === 0 ? (
             <Card>
               <CardContent className="flex h-40 items-center justify-center">
-                <p className="text-muted-foreground">No denied requests</p>
+                <p className="text-sm text-muted-foreground">No denied requests</p>
               </CardContent>
             </Card>
           ) : (
-            deniedRequests.map((request) => <RequestCard key={request.id} request={request} />)
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {deniedRequests.map((request) => (
+                  <InterestRequestCard key={request.id} request={request} currentUserId={currentUserId} />
+                ))}
+              </div>
+              {getTotalPages() > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={deniedRequests.length}
+                  />
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -336,11 +300,34 @@ export default function InterestsPage() {
           {sentRequests.length === 0 ? (
             <Card>
               <CardContent className="flex h-40 items-center justify-center">
-                <p className="text-muted-foreground">No sent requests</p>
+                <p className="text-sm text-muted-foreground">No sent requests</p>
               </CardContent>
             </Card>
           ) : (
-            sentRequests.map((request) => <RequestCard key={request.id} request={request} isSent={true} />)
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {sentRequests.map((request) => (
+                  <InterestRequestCard
+                    key={request.id}
+                    request={request}
+                    currentUserId={currentUserId}
+                    isSent={true}
+                    onCancel={handleCancelRequest}
+                  />
+                ))}
+              </div>
+              {getTotalPages() > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={sentRequests.length}
+                  />
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>

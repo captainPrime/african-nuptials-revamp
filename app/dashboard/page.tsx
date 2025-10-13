@@ -11,11 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Heart, Search, ChevronLeft, ChevronRight, MapPin, Briefcase, Ruler, Award } from "lucide-react"
+import { Heart, Search, ChevronLeft, ChevronRight, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { getCompatibleMatches, type MatchScore } from "@/lib/utils/matching-algorithm"
 import { ProfileCompletion } from "@/components/profile-completion"
+import {
+  MatchCardSkeleton,
+  InterestRequestSkeleton,
+  ChatListSkeleton,
+  ProfileCompletionSkeleton,
+  PlanDetailsSkeleton,
+} from "@/components/ui/skeleton-loader"
+import { InterestRequestCard } from "@/components/interest-request-card"
 
 interface InterestRequest {
   id: string
@@ -281,14 +289,6 @@ export default function DashboardPage() {
     ? Math.ceil((new Date(currentSubscription.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    )
-  }
-
   const pendingRequests = interestRequests.filter((req) => req.status === "pending")
   const acceptedRequests = interestRequests.filter((req) => req.status === "accepted")
   const deniedRequests = interestRequests.filter((req) => req.status === "denied")
@@ -297,7 +297,7 @@ export default function DashboardPage() {
   const deniedSent = sentRequests.filter((req) => req.status === "denied")
 
   return (
-    <div className="space-y-6 p-3 sm:p-6">
+    <div className="space-y-6 p-2 sm:p-6">
       <Card className="border-none shadow-sm">
         <CardContent className="p-6">
           <Tabs defaultValue="advance" className="w-full">
@@ -435,8 +435,10 @@ export default function DashboardPage() {
               </div>
 
               {loadingMatches ? (
-                <div className="flex h-40 items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <MatchCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : newMatches.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -494,273 +496,152 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="border-none shadow-sm">
-            <CardContent className="p-6">
-              <h2 className="mb-6 font-serif text-xl font-semibold">Interest request</h2>
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="mb-4 sm:mb-6 font-serif text-lg sm:text-xl font-semibold">Interest request</h2>
               {loadingRequests ? (
-                <div className="flex h-40 items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <InterestRequestSkeleton key={i} />
+                  ))}
                 </div>
               ) : (
                 <Tabs defaultValue="new" className="w-full">
-                  <TabsList className="mb-6 grid w-full grid-cols-4">
-                    <TabsTrigger value="new">New requests</TabsTrigger>
-                    <TabsTrigger value="accepted">Accept request</TabsTrigger>
-                    <TabsTrigger value="denied">Denied request</TabsTrigger>
-                    <TabsTrigger value="sent">Sent requests</TabsTrigger>
+                  <TabsList className="mb-4 sm:mb-6 grid h-auto w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-0">
+                    <TabsTrigger value="new" className="text-xs sm:text-sm">
+                      New
+                    </TabsTrigger>
+                    <TabsTrigger value="accepted" className="text-xs sm:text-sm">
+                      Accepted
+                    </TabsTrigger>
+                    <TabsTrigger value="denied" className="text-xs sm:text-sm">
+                      Denied
+                    </TabsTrigger>
+                    <TabsTrigger value="sent" className="text-xs sm:text-sm">
+                      Sent
+                    </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="new" className="space-y-4">
+                  <TabsContent value="new" className="space-y-3 sm:space-y-4">
                     {pendingRequests.length === 0 ? (
                       <p className="py-12 text-center text-sm text-muted-foreground">No new requests</p>
                     ) : (
-                      pendingRequests.map((request) => {
-                        const age = request.sender.date_of_birth
-                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                          : null
-                        return (
-                          <Card key={request.id} className="border shadow-sm">
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <Avatar className="h-20 w-20 border-2 border-primary/20">
-                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
-                                  {request.sender.first_name?.[0]}
-                                  {request.sender.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-foreground">
-                                  {request.sender.first_name} {request.sender.last_name}
-                                </h3>
-                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                  {request.sender.living_in && (
-                                    <span className="flex items-center gap-1">
-                                      <MapPin className="h-3 w-3" />
-                                      City: {request.sender.living_in}
-                                    </span>
-                                  )}
-                                  {age && <span>Age: {age}</span>}
-                                  {request.sender.height && (
-                                    <span className="flex items-center gap-1">
-                                      <Ruler className="h-3 w-3" />
-                                      Height: {request.sender.height}
-                                    </span>
-                                  )}
-                                  {request.sender.profession && (
-                                    <span className="flex items-center gap-1">
-                                      <Briefcase className="h-3 w-3" />
-                                      Job: {request.sender.profession}
-                                    </span>
-                                  )}
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="mt-3 border-primary/20 text-xs bg-transparent"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/profile/${request.sender.id}`)
-                                  }}
-                                >
-                                  View full profile
-                                </Button>
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                  Request on: {new Date(request.created_at).toLocaleDateString()} at{" "}
-                                  {new Date(request.created_at).toLocaleTimeString()}
-                                </p>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                <Button
-                                  size="sm"
-                                  className="bg-accent/50 text-primary hover:bg-accent"
-                                  onClick={() => handleAcceptRequest(request.id)}
-                                >
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-destructive/20 text-destructive hover:bg-destructive/10 bg-transparent"
-                                  onClick={() => handleDenyRequest(request.id)}
-                                >
-                                  Deny
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })
+                      pendingRequests.map((request) => (
+                        <InterestRequestCard
+                          key={request.id}
+                          request={request}
+                          currentUserId={currentUser?.id || ""}
+                          onAccept={handleAcceptRequest}
+                          onDeny={handleDenyRequest}
+                          compact={true}
+                        />
+                      ))
                     )}
                   </TabsContent>
-                  <TabsContent value="accepted" className="space-y-4">
+                  <TabsContent value="accepted" className="space-y-3 sm:space-y-4">
                     {acceptedRequests.length === 0 ? (
-                      <p className="py-8 text-center text-muted-foreground">No accepted requests</p>
+                      <p className="py-8 text-center text-sm text-muted-foreground">No accepted requests</p>
                     ) : (
-                      acceptedRequests.map((request) => {
-                        const age = request.sender.date_of_birth
-                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                          : null
-                        return (
-                          <Card key={request.id}>
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <Avatar className="h-20 w-20">
-                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                <AvatarFallback>
-                                  {request.sender.first_name?.[0]}
-                                  {request.sender.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <h3 className="font-semibold">
-                                  {request.sender.first_name} {request.sender.last_name}
-                                </h3>
-                                <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                  {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
-                                  {age && <span>Age: {age}</span>}
-                                  {request.sender.height && <span>Height: {request.sender.height}</span>}
-                                  {request.sender.profession && <span>Job: {request.sender.profession}</span>}
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="mt-2 bg-transparent"
-                                  onClick={() => router.push(`/profile/${request.sender.id}`)}
-                                >
-                                  View full profile
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })
+                      acceptedRequests.map((request) => (
+                        <InterestRequestCard
+                          key={request.id}
+                          request={request}
+                          currentUserId={currentUser?.id || ""}
+                          compact={true}
+                        />
+                      ))
                     )}
                   </TabsContent>
-                  <TabsContent value="denied" className="space-y-4">
+                  <TabsContent value="denied" className="space-y-3 sm:space-y-4">
                     {deniedRequests.length === 0 ? (
-                      <p className="py-8 text-center text-muted-foreground">No denied requests</p>
+                      <p className="py-8 text-center text-sm text-muted-foreground">No denied requests</p>
                     ) : (
-                      deniedRequests.map((request) => {
-                        const age = request.sender.date_of_birth
-                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                          : null
-                        return (
-                          <Card key={request.id}>
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <Avatar className="h-20 w-20">
-                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                <AvatarFallback>
-                                  {request.sender.first_name?.[0]}
-                                  {request.sender.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <h3 className="font-semibold">
-                                  {request.sender.first_name} {request.sender.last_name}
-                                </h3>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })
+                      deniedRequests.map((request) => (
+                        <InterestRequestCard
+                          key={request.id}
+                          request={request}
+                          currentUserId={currentUser?.id || ""}
+                          compact={true}
+                        />
+                      ))
                     )}
                   </TabsContent>
-                  <TabsContent value="sent" className="space-y-4">
+                  <TabsContent value="sent" className="space-y-3 sm:space-y-4">
                     <Tabs defaultValue="pending-sent" className="w-full">
-                      <TabsList>
-                        <TabsTrigger value="pending-sent">Pending</TabsTrigger>
-                        <TabsTrigger value="accepted-sent">Accepted</TabsTrigger>
-                        <TabsTrigger value="denied-sent">Denied</TabsTrigger>
+                      <TabsList className="mb-4 grid w-full grid-cols-3">
+                        <TabsTrigger value="pending-sent" className="text-xs sm:text-sm">
+                          Pending
+                        </TabsTrigger>
+                        <TabsTrigger value="accepted-sent" className="text-xs sm:text-sm">
+                          Accepted
+                        </TabsTrigger>
+                        <TabsTrigger value="denied-sent" className="text-xs sm:text-sm">
+                          Denied
+                        </TabsTrigger>
                       </TabsList>
-                      <TabsContent value="pending-sent" className="space-y-4">
+                      <TabsContent value="pending-sent" className="space-y-3 sm:space-y-4">
                         {pendingSent.length === 0 ? (
-                          <p className="py-8 text-center text-muted-foreground">No pending sent requests</p>
+                          <p className="py-8 text-center text-sm text-muted-foreground">No pending sent requests</p>
                         ) : (
-                          pendingSent.map((request) => {
-                            const age = request.sender.date_of_birth
-                              ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                              : null
-                            return (
-                              <Card key={request.id}>
-                                <CardContent className="flex items-center gap-4 p-4">
-                                  <Avatar className="h-20 w-20">
-                                    <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                    <AvatarFallback>
-                                      {request.sender.first_name?.[0]}
-                                      {request.sender.last_name?.[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold">
-                                      {request.sender.first_name} {request.sender.last_name}
-                                    </h3>
-                                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                      {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
-                                      {age && <span>Age: {age}</span>}
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="mt-2 bg-transparent"
-                                      onClick={() => router.push(`/profile/${request.sender.id}`)}
-                                    >
-                                      View full profile
-                                    </Button>
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                      Sent on: {new Date(request.created_at).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                  <Badge variant="secondary">Pending</Badge>
-                                </CardContent>
-                              </Card>
-                            )
-                          })
-                        )}
-                      </TabsContent>
-                      <TabsContent value="accepted-sent" className="space-y-4">
-                        {acceptedSent.length === 0 ? (
-                          <p className="py-8 text-center text-muted-foreground">No accepted sent requests</p>
-                        ) : (
-                          acceptedSent.map((request) => (
-                            <Card key={request.id}>
-                              <CardContent className="flex items-center gap-4 p-4">
-                                <Avatar className="h-20 w-20">
-                                  <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                  <AvatarFallback>
-                                    {request.sender.first_name?.[0]}
-                                    {request.sender.last_name?.[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                  <h3 className="font-semibold">
-                                    {request.sender.first_name} {request.sender.last_name}
-                                  </h3>
-                                </div>
-                                <Badge className="bg-green-100 text-green-700">Accepted</Badge>
-                              </CardContent>
-                            </Card>
+                          pendingSent.map((request) => (
+                            <InterestRequestCard
+                              key={request.id}
+                              request={request}
+                              currentUserId={currentUser?.id || ""}
+                              isSent={true}
+                              onCancel={async (requestId) => {
+                                const { error } = await supabase.from("interest_requests").delete().eq("id", requestId)
+                                if (!error) {
+                                  toast({ title: "Request canceled" })
+                                  // Refresh data
+                                  const { data: sent } = await supabase
+                                    .from("interest_requests")
+                                    .select("*, receiver:receiver_id(*)")
+                                    .eq("sender_id", currentUser?.id)
+                                    .order("created_at", { ascending: false })
+                                    .limit(10)
+                                  if (sent) {
+                                    setSentRequests(
+                                      sent.map((req: any) => ({
+                                        id: req.id,
+                                        sender: req.receiver,
+                                        status: req.status,
+                                        created_at: req.created_at,
+                                      })),
+                                    )
+                                  }
+                                }
+                              }}
+                              compact={true}
+                            />
                           ))
                         )}
                       </TabsContent>
-                      <TabsContent value="denied-sent" className="space-y-4">
+                      <TabsContent value="accepted-sent" className="space-y-3 sm:space-y-4">
+                        {acceptedSent.length === 0 ? (
+                          <p className="py-8 text-center text-sm text-muted-foreground">No accepted sent requests</p>
+                        ) : (
+                          acceptedSent.map((request) => (
+                            <InterestRequestCard
+                              key={request.id}
+                              request={request}
+                              currentUserId={currentUser?.id || ""}
+                              isSent={true}
+                              compact={true}
+                            />
+                          ))
+                        )}
+                      </TabsContent>
+                      <TabsContent value="denied-sent" className="space-y-3 sm:space-y-4">
                         {deniedSent.length === 0 ? (
-                          <p className="py-8 text-center text-muted-foreground">No denied sent requests</p>
+                          <p className="py-8 text-center text-sm text-muted-foreground">No denied sent requests</p>
                         ) : (
                           deniedSent.map((request) => (
-                            <Card key={request.id}>
-                              <CardContent className="flex items-center gap-4 p-4">
-                                <Avatar className="h-20 w-20">
-                                  <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                  <AvatarFallback>
-                                    {request.sender.first_name?.[0]}
-                                    {request.sender.last_name?.[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                  <h3 className="font-semibold">
-                                    {request.sender.first_name} {request.sender.last_name}
-                                  </h3>
-                                </div>
-                                <Badge variant="destructive">Denied</Badge>
-                              </CardContent>
-                            </Card>
+                            <InterestRequestCard
+                              key={request.id}
+                              request={request}
+                              currentUserId={currentUser?.id || ""}
+                              isSent={true}
+                              compact={true}
+                            />
                           ))
                         )}
                       </TabsContent>
@@ -774,11 +655,7 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           {loadingProfile ? (
-            <Card className="border-none shadow-sm">
-              <CardContent className="flex h-40 items-center justify-center p-6">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-              </CardContent>
-            </Card>
+            <ProfileCompletionSkeleton />
           ) : (
             currentUser && (
               <ProfileCompletion
@@ -791,14 +668,12 @@ export default function DashboardPage() {
             )
           )}
 
-          <Card className="border-none shadow-sm">
-            <CardContent className="p-6">
-              <h2 className="mb-6 font-serif text-xl font-semibold">Plan details</h2>
-              {loadingSubscription ? (
-                <div className="flex h-40 items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                </div>
-              ) : (
+          {loadingSubscription ? (
+            <PlanDetailsSkeleton />
+          ) : (
+            <Card className="border-none shadow-sm">
+              <CardContent className="p-6">
+                <h2 className="mb-6 font-serif text-xl font-semibold">Plan details</h2>
                 <div className="text-center">
                   <div className="mb-4 flex items-center justify-center">
                     <div
@@ -839,16 +714,18 @@ export default function DashboardPage() {
                     {currentSubscription?.package?.name === "premium" ? "Manage Plan" : "Upgrade Now"}
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
               <h2 className="mb-6 font-serif text-xl font-semibold">Recent chat list</h2>
               {loadingChats ? (
-                <div className="flex h-40 items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <ChatListSkeleton key={i} />
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-3">

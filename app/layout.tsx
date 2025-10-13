@@ -21,7 +21,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "African Nuptials - Where Love Stories Begin",
   description: "Discover your forever love. African matrimony website for finding your perfect connection.",
-  generator: "v0.app",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  },
 }
 
 export default function RootLayout({

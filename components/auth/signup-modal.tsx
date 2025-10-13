@@ -43,13 +43,16 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
     setLoading(true)
 
     try {
+      const isProduction = window.location.hostname !== "localhost"
+      const redirectUrl = isProduction
+        ? "https://african-nuptials-three.vercel.app/complete-profile"
+        : "http://localhost:3000/complete-profile"
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL
-            ? `${process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL}/complete-profile`
-            : `${window.location.origin}/complete-profile`,
+          emailRedirectTo: redirectUrl,
           data: {
             phone: phone, // Store phone in user metadata
           },

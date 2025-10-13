@@ -23,26 +23,23 @@ export interface MatchScore {
  * - User behavior/engagement (10 points)
  * Total: 100 points
  */
-export async function getCompatibleMatches(userId: string, limit = 10): Promise<MatchScore[]> {
+export async function getCompatibleMatches(userId: string, limit = 10, offset = 0): Promise<MatchScore[]> {
   const supabase = getSupabaseBrowserClient()
 
-  // Get current user profile
   const { data: currentUser } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
   if (!currentUser) return []
 
-  // Get potential matches (opposite gender, not blocked, active)
   const { data: potentialMatches } = await supabase
     .from("profiles")
     .select("*")
     .neq("id", userId)
     .neq("gender", currentUser.gender)
     .eq("is_active", true)
-    .limit(50) // Get more profiles to calculate scores
+    .range(offset, offset + limit + 49) // Get extra profiles to ensure we have enough after scoring
 
   if (!potentialMatches || potentialMatches.length === 0) return []
 
-  // Calculate match scores for each potential match
   const matchScores: MatchScore[] = []
 
   for (const match of potentialMatches) {
@@ -62,7 +59,7 @@ export async function getCompatibleMatches(userId: string, limit = 10): Promise<
         .select("*")
         .eq("user_id", userId)
         .eq("matched_profile_id", match.id)
-        .maybeSingle() // Use maybeSingle instead of single to avoid error when no rows
+        .maybeSingle()
 
       if (fetchError) {
         console.error("[v0] Error fetching match score:", fetchError)
@@ -87,7 +84,6 @@ export async function getCompatibleMatches(userId: string, limit = 10): Promise<
     }
   }
 
-  // Sort by compatibility score and return top matches
   return matchScores.sort((a, b) => b.compatibility_score - a.compatibility_score).slice(0, limit)
 }
 

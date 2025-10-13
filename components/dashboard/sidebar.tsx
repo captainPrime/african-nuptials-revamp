@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
+import Image from "next/image"
 
 interface DashboardSidebarProps {
   isMobileOpen?: boolean
@@ -90,24 +91,15 @@ export function DashboardSidebar({ isMobileOpen, onMobileClose }: DashboardSideb
           <div className="border-b border-border p-6">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M16 4C16 4 12 8 12 12C12 14.2091 13.7909 16 16 16C18.2091 16 20 14.2091 20 12C20 8 16 4 16 4Z"
-                    fill="currentColor"
-                    className="text-primary"
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/logo.png" // your logo file path (e.g. public/logo.png)
+                    alt="AfricaNuptials Logo"
+                    width={150}
+                    height={150}
+                    className="rounded-xl object-cover" // gives the logo nice rounded edges
                   />
-                  <path
-                    d="M8 16C8 16 4 20 4 24C4 26.2091 5.79086 28 8 28C10.2091 28 12 26.2091 12 24C12 20 8 16 8 16Z"
-                    fill="currentColor"
-                    className="text-primary"
-                  />
-                  <path
-                    d="M24 16C24 16 20 20 20 24C20 26.2091 21.7909 28 24 28C26.2091 28 28 26.2091 28 24C28 20 24 16 24 16Z"
-                    fill="currentColor"
-                    className="text-primary"
-                  />
-                </svg>
-                <span className="font-serif text-xl font-semibold text-primary">AfricaNuptials</span>
+                </div>
               </Link>
               <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMobileClose}>
                 <X className="h-5 w-5" />
