@@ -50,6 +50,12 @@ export default function DashboardPage() {
   const [totalUnreadMessages, setTotalUnreadMessages] = useState(0)
   const [friendships, setFriendships] = useState<Set<string>>(new Set())
 
+  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [loadingMatches, setLoadingMatches] = useState(true)
+  const [loadingRequests, setLoadingRequests] = useState(true)
+  const [loadingChats, setLoadingChats] = useState(true)
+  const [loadingSubscription, setLoadingSubscription] = useState(true)
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       const {
@@ -63,9 +69,11 @@ export default function DashboardPage() {
 
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
       if (profile) setCurrentUser(profile)
+      setLoadingProfile(false)
 
       const compatibleMatches = await getCompatibleMatches(user.id, 10)
       setNewMatches(compatibleMatches)
+      setLoadingMatches(false)
 
       const { data: requests } = await supabase
         .from("interest_requests")
@@ -115,6 +123,8 @@ export default function DashboardPage() {
         .eq("receiver_id", user.id)
       setInterestsCount(interests || 0)
 
+      setLoadingRequests(false)
+
       const { data: conversations } = await supabase
         .from("conversations")
         .select(
@@ -155,6 +165,7 @@ export default function DashboardPage() {
         setRecentChats(chatsWithOtherUser)
         setTotalUnreadMessages(totalUnread)
       }
+      setLoadingChats(false)
 
       const { data: acceptedRequests } = await supabase
         .from("interest_requests")
@@ -184,6 +195,7 @@ export default function DashboardPage() {
         .maybeSingle()
 
       setCurrentSubscription(subscription)
+      setLoadingSubscription(false)
 
       setLoading(false)
     }
@@ -285,13 +297,12 @@ export default function DashboardPage() {
   const deniedSent = sentRequests.filter((req) => req.status === "denied")
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-3 sm:p-6">
       <Card className="border-none shadow-sm">
         <CardContent className="p-6">
           <Tabs defaultValue="advance" className="w-full">
             <TabsList className="mb-6  w-full max-w-md ">
               <TabsTrigger value="advance">Advance Search</TabsTrigger>
-
             </TabsList>
             <TabsContent value="advance">
               <div className="grid gap-4 md:grid-cols-4">
@@ -423,7 +434,11 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {newMatches.length > 0 && (
+              {loadingMatches ? (
+                <div className="flex h-40 items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                </div>
+              ) : newMatches.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                   {newMatches.slice(currentMatchIndex, currentMatchIndex + 5).map((matchScore) => {
                     const match = matchScore.profile
@@ -472,6 +487,8 @@ export default function DashboardPage() {
                     )
                   })}
                 </div>
+              ) : (
+                <p className="py-12 text-center text-muted-foreground">No matches found</p>
               )}
             </CardContent>
           </Card>
@@ -479,183 +496,229 @@ export default function DashboardPage() {
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
               <h2 className="mb-6 font-serif text-xl font-semibold">Interest request</h2>
-              <Tabs defaultValue="new" className="w-full">
-                <TabsList className="mb-6 grid w-full grid-cols-4">
-                  <TabsTrigger value="new">New requests</TabsTrigger>
-                  <TabsTrigger value="accepted">Accept request</TabsTrigger>
-                  <TabsTrigger value="denied">Denied request</TabsTrigger>
-                  <TabsTrigger value="sent">Sent requests</TabsTrigger>
-                </TabsList>
-                <TabsContent value="new" className="space-y-4">
-                  {pendingRequests.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">No new requests</p>
-                  ) : (
-                    pendingRequests.map((request) => {
-                      const age = request.sender.date_of_birth
-                        ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                        : null
-                      return (
-                        <Card key={request.id} className="border shadow-sm">
-                          <CardContent className="flex items-center gap-4 p-4">
-                            <Avatar className="h-20 w-20 border-2 border-primary/20">
-                              <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                              <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
-                                {request.sender.first_name?.[0]}
-                                {request.sender.last_name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-foreground">
-                                {request.sender.first_name} {request.sender.last_name}
-                              </h3>
-                              <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                {request.sender.living_in && (
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    City: {request.sender.living_in}
-                                  </span>
-                                )}
-                                {age && <span>Age: {age}</span>}
-                                {request.sender.height && (
-                                  <span className="flex items-center gap-1">
-                                    <Ruler className="h-3 w-3" />
-                                    Height: {request.sender.height}
-                                  </span>
-                                )}
-                                {request.sender.profession && (
-                                  <span className="flex items-center gap-1">
-                                    <Briefcase className="h-3 w-3" />
-                                    Job: {request.sender.profession}
-                                  </span>
-                                )}
+              {loadingRequests ? (
+                <div className="flex h-40 items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                </div>
+              ) : (
+                <Tabs defaultValue="new" className="w-full">
+                  <TabsList className="mb-6 grid w-full grid-cols-4">
+                    <TabsTrigger value="new">New requests</TabsTrigger>
+                    <TabsTrigger value="accepted">Accept request</TabsTrigger>
+                    <TabsTrigger value="denied">Denied request</TabsTrigger>
+                    <TabsTrigger value="sent">Sent requests</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="new" className="space-y-4">
+                    {pendingRequests.length === 0 ? (
+                      <p className="py-12 text-center text-sm text-muted-foreground">No new requests</p>
+                    ) : (
+                      pendingRequests.map((request) => {
+                        const age = request.sender.date_of_birth
+                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
+                          : null
+                        return (
+                          <Card key={request.id} className="border shadow-sm">
+                            <CardContent className="flex items-center gap-4 p-4">
+                              <Avatar className="h-20 w-20 border-2 border-primary/20">
+                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+                                  {request.sender.first_name?.[0]}
+                                  {request.sender.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-foreground">
+                                  {request.sender.first_name} {request.sender.last_name}
+                                </h3>
+                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                  {request.sender.living_in && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      City: {request.sender.living_in}
+                                    </span>
+                                  )}
+                                  {age && <span>Age: {age}</span>}
+                                  {request.sender.height && (
+                                    <span className="flex items-center gap-1">
+                                      <Ruler className="h-3 w-3" />
+                                      Height: {request.sender.height}
+                                    </span>
+                                  )}
+                                  {request.sender.profession && (
+                                    <span className="flex items-center gap-1">
+                                      <Briefcase className="h-3 w-3" />
+                                      Job: {request.sender.profession}
+                                    </span>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-3 border-primary/20 text-xs bg-transparent"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/profile/${request.sender.id}`)
+                                  }}
+                                >
+                                  View full profile
+                                </Button>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Request on: {new Date(request.created_at).toLocaleDateString()} at{" "}
+                                  {new Date(request.created_at).toLocaleTimeString()}
+                                </p>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-3 border-primary/20 text-xs bg-transparent"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  router.push(`/profile/${request.sender.id}`)
-                                }}
-                              >
-                                View full profile
-                              </Button>
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                Request on: {new Date(request.created_at).toLocaleDateString()} at{" "}
-                                {new Date(request.created_at).toLocaleTimeString()}
-                              </p>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <Button
-                                size="sm"
-                                className="bg-accent/50 text-primary hover:bg-accent"
-                                onClick={() => handleAcceptRequest(request.id)}
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-destructive/20 text-destructive hover:bg-destructive/10 bg-transparent"
-                                onClick={() => handleDenyRequest(request.id)}
-                              >
-                                Deny
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })
-                  )}
-                </TabsContent>
-                <TabsContent value="accepted" className="space-y-4">
-                  {acceptedRequests.length === 0 ? (
-                    <p className="py-8 text-center text-muted-foreground">No accepted requests</p>
-                  ) : (
-                    acceptedRequests.map((request) => {
-                      const age = request.sender.date_of_birth
-                        ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                        : null
-                      return (
-                        <Card key={request.id}>
-                          <CardContent className="flex items-center gap-4 p-4">
-                            <Avatar className="h-20 w-20">
-                              <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                              <AvatarFallback>
-                                {request.sender.first_name?.[0]}
-                                {request.sender.last_name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <h3 className="font-semibold">
-                                {request.sender.first_name} {request.sender.last_name}
-                              </h3>
-                              <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
-                                {age && <span>Age: {age}</span>}
-                                {request.sender.height && <span>Height: {request.sender.height}</span>}
-                                {request.sender.profession && <span>Job: {request.sender.profession}</span>}
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  size="sm"
+                                  className="bg-accent/50 text-primary hover:bg-accent"
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-destructive/20 text-destructive hover:bg-destructive/10 bg-transparent"
+                                  onClick={() => handleDenyRequest(request.id)}
+                                >
+                                  Deny
+                                </Button>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-2 bg-transparent"
-                                onClick={() => router.push(`/profile/${request.sender.id}`)}
-                              >
-                                View full profile
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })
-                  )}
-                </TabsContent>
-                <TabsContent value="denied" className="space-y-4">
-                  {deniedRequests.length === 0 ? (
-                    <p className="py-8 text-center text-muted-foreground">No denied requests</p>
-                  ) : (
-                    deniedRequests.map((request) => {
-                      const age = request.sender.date_of_birth
-                        ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                        : null
-                      return (
-                        <Card key={request.id}>
-                          <CardContent className="flex items-center gap-4 p-4">
-                            <Avatar className="h-20 w-20">
-                              <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                              <AvatarFallback>
-                                {request.sender.first_name?.[0]}
-                                {request.sender.last_name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <h3 className="font-semibold">
-                                {request.sender.first_name} {request.sender.last_name}
-                              </h3>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })
-                  )}
-                </TabsContent>
-                <TabsContent value="sent" className="space-y-4">
-                  <Tabs defaultValue="pending-sent" className="w-full">
-                    <TabsList>
-                      <TabsTrigger value="pending-sent">Pending</TabsTrigger>
-                      <TabsTrigger value="accepted-sent">Accepted</TabsTrigger>
-                      <TabsTrigger value="denied-sent">Denied</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="pending-sent" className="space-y-4">
-                      {pendingSent.length === 0 ? (
-                        <p className="py-8 text-center text-muted-foreground">No pending sent requests</p>
-                      ) : (
-                        pendingSent.map((request) => {
-                          const age = request.sender.date_of_birth
-                            ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
-                            : null
-                          return (
+                            </CardContent>
+                          </Card>
+                        )
+                      })
+                    )}
+                  </TabsContent>
+                  <TabsContent value="accepted" className="space-y-4">
+                    {acceptedRequests.length === 0 ? (
+                      <p className="py-8 text-center text-muted-foreground">No accepted requests</p>
+                    ) : (
+                      acceptedRequests.map((request) => {
+                        const age = request.sender.date_of_birth
+                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
+                          : null
+                        return (
+                          <Card key={request.id}>
+                            <CardContent className="flex items-center gap-4 p-4">
+                              <Avatar className="h-20 w-20">
+                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                <AvatarFallback>
+                                  {request.sender.first_name?.[0]}
+                                  {request.sender.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h3 className="font-semibold">
+                                  {request.sender.first_name} {request.sender.last_name}
+                                </h3>
+                                <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
+                                  {age && <span>Age: {age}</span>}
+                                  {request.sender.height && <span>Height: {request.sender.height}</span>}
+                                  {request.sender.profession && <span>Job: {request.sender.profession}</span>}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2 bg-transparent"
+                                  onClick={() => router.push(`/profile/${request.sender.id}`)}
+                                >
+                                  View full profile
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })
+                    )}
+                  </TabsContent>
+                  <TabsContent value="denied" className="space-y-4">
+                    {deniedRequests.length === 0 ? (
+                      <p className="py-8 text-center text-muted-foreground">No denied requests</p>
+                    ) : (
+                      deniedRequests.map((request) => {
+                        const age = request.sender.date_of_birth
+                          ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
+                          : null
+                        return (
+                          <Card key={request.id}>
+                            <CardContent className="flex items-center gap-4 p-4">
+                              <Avatar className="h-20 w-20">
+                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                <AvatarFallback>
+                                  {request.sender.first_name?.[0]}
+                                  {request.sender.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h3 className="font-semibold">
+                                  {request.sender.first_name} {request.sender.last_name}
+                                </h3>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })
+                    )}
+                  </TabsContent>
+                  <TabsContent value="sent" className="space-y-4">
+                    <Tabs defaultValue="pending-sent" className="w-full">
+                      <TabsList>
+                        <TabsTrigger value="pending-sent">Pending</TabsTrigger>
+                        <TabsTrigger value="accepted-sent">Accepted</TabsTrigger>
+                        <TabsTrigger value="denied-sent">Denied</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="pending-sent" className="space-y-4">
+                        {pendingSent.length === 0 ? (
+                          <p className="py-8 text-center text-muted-foreground">No pending sent requests</p>
+                        ) : (
+                          pendingSent.map((request) => {
+                            const age = request.sender.date_of_birth
+                              ? new Date().getFullYear() - new Date(request.sender.date_of_birth).getFullYear()
+                              : null
+                            return (
+                              <Card key={request.id}>
+                                <CardContent className="flex items-center gap-4 p-4">
+                                  <Avatar className="h-20 w-20">
+                                    <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                    <AvatarFallback>
+                                      {request.sender.first_name?.[0]}
+                                      {request.sender.last_name?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold">
+                                      {request.sender.first_name} {request.sender.last_name}
+                                    </h3>
+                                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                      {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
+                                      {age && <span>Age: {age}</span>}
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="mt-2 bg-transparent"
+                                      onClick={() => router.push(`/profile/${request.sender.id}`)}
+                                    >
+                                      View full profile
+                                    </Button>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                      Sent on: {new Date(request.created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <Badge variant="secondary">Pending</Badge>
+                                </CardContent>
+                              </Card>
+                            )
+                          })
+                        )}
+                      </TabsContent>
+                      <TabsContent value="accepted-sent" className="space-y-4">
+                        {acceptedSent.length === 0 ? (
+                          <p className="py-8 text-center text-muted-foreground">No accepted sent requests</p>
+                        ) : (
+                          acceptedSent.map((request) => (
                             <Card key={request.id}>
                               <CardContent className="flex items-center gap-4 p-4">
                                 <Avatar className="h-20 w-20">
@@ -669,180 +732,161 @@ export default function DashboardPage() {
                                   <h3 className="font-semibold">
                                     {request.sender.first_name} {request.sender.last_name}
                                   </h3>
-                                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                    {request.sender.living_in && <span>City: {request.sender.living_in}</span>}
-                                    {age && <span>Age: {age}</span>}
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="mt-2 bg-transparent"
-                                    onClick={() => router.push(`/profile/${request.sender.id}`)}
-                                  >
-                                    View full profile
-                                  </Button>
-                                  <p className="mt-2 text-xs text-muted-foreground">
-                                    Sent on: {new Date(request.created_at).toLocaleDateString()}
-                                  </p>
                                 </div>
-                                <Badge variant="secondary">Pending</Badge>
+                                <Badge className="bg-green-100 text-green-700">Accepted</Badge>
                               </CardContent>
                             </Card>
-                          )
-                        })
-                      )}
-                    </TabsContent>
-                    <TabsContent value="accepted-sent" className="space-y-4">
-                      {acceptedSent.length === 0 ? (
-                        <p className="py-8 text-center text-muted-foreground">No accepted sent requests</p>
-                      ) : (
-                        acceptedSent.map((request) => (
-                          <Card key={request.id}>
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <Avatar className="h-20 w-20">
-                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                <AvatarFallback>
-                                  {request.sender.first_name?.[0]}
-                                  {request.sender.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <h3 className="font-semibold">
-                                  {request.sender.first_name} {request.sender.last_name}
-                                </h3>
-                              </div>
-                              <Badge className="bg-green-100 text-green-700">Accepted</Badge>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </TabsContent>
-                    <TabsContent value="denied-sent" className="space-y-4">
-                      {deniedSent.length === 0 ? (
-                        <p className="py-8 text-center text-muted-foreground">No denied sent requests</p>
-                      ) : (
-                        deniedSent.map((request) => (
-                          <Card key={request.id}>
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <Avatar className="h-20 w-20">
-                                <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
-                                <AvatarFallback>
-                                  {request.sender.first_name?.[0]}
-                                  {request.sender.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <h3 className="font-semibold">
-                                  {request.sender.first_name} {request.sender.last_name}
-                                </h3>
-                              </div>
-                              <Badge variant="destructive">Denied</Badge>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </TabsContent>
-              </Tabs>
+                          ))
+                        )}
+                      </TabsContent>
+                      <TabsContent value="denied-sent" className="space-y-4">
+                        {deniedSent.length === 0 ? (
+                          <p className="py-8 text-center text-muted-foreground">No denied sent requests</p>
+                        ) : (
+                          deniedSent.map((request) => (
+                            <Card key={request.id}>
+                              <CardContent className="flex items-center gap-4 p-4">
+                                <Avatar className="h-20 w-20">
+                                  <AvatarImage src={request.sender.profile_photo || "/placeholder.svg"} />
+                                  <AvatarFallback>
+                                    {request.sender.first_name?.[0]}
+                                    {request.sender.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <h3 className="font-semibold">
+                                    {request.sender.first_name} {request.sender.last_name}
+                                  </h3>
+                                </div>
+                                <Badge variant="destructive">Denied</Badge>
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </TabsContent>
+                </Tabs>
+              )}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
-          {currentUser && (
-            <ProfileCompletion
-              profile={currentUser}
-              likesCount={likesCount}
-              viewsCount={currentUser.profile_views || 0}
-              interestsCount={interestsCount}
-              showCompleteButton={true}
-            />
+          {loadingProfile ? (
+            <Card className="border-none shadow-sm">
+              <CardContent className="flex h-40 items-center justify-center p-6">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              </CardContent>
+            </Card>
+          ) : (
+            currentUser && (
+              <ProfileCompletion
+                profile={currentUser}
+                likesCount={likesCount}
+                viewsCount={currentUser.profile_views || 0}
+                interestsCount={interestsCount}
+                showCompleteButton={true}
+              />
+            )
           )}
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
               <h2 className="mb-6 font-serif text-xl font-semibold">Plan details</h2>
-              <div className="text-center">
-                <div className="mb-4 flex items-center justify-center">
-                  <div
-                    className={`rounded-full p-6 shadow-lg ${currentSubscription?.package?.name === "premium"
-                        ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
-                        : currentSubscription?.package?.name === "standard"
-                          ? "bg-gradient-to-br from-blue-400 to-blue-600"
-                          : "bg-gradient-to-br from-gray-400 to-gray-600"
-                      }`}
-                  >
-                    <Award className="h-12 w-12 text-white" />
-                  </div>
+              {loadingSubscription ? (
+                <div className="flex h-40 items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold capitalize text-foreground">
-                  {currentSubscription?.package?.display_name || "Basic Plan"}
-                </h3>
-                {currentSubscription ? (
-                  <>
-                    <p className="mb-1 text-sm text-muted-foreground">
-                      Validity {currentSubscription.package.duration_months} Months
-                    </p>
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      Valid till {new Date(currentSubscription.end_date).toLocaleDateString()}
-                    </p>
-                    <Badge variant={daysRemaining > 7 ? "default" : "destructive"} className="mb-4">
-                      {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Expired"}
-                    </Badge>
-                  </>
-                ) : (
-                  <p className="mb-6 text-sm text-muted-foreground">Free plan - No expiration</p>
-                )}
-                <Button
-                  variant="outline"
-                  className="w-full border-primary/20 bg-accent/30 hover:bg-accent/50"
-                  onClick={() => router.push("/dashboard/plan")}
-                >
-                  {currentSubscription?.package?.name === "premium" ? "Manage Plan" : "Upgrade Now"}
-                </Button>
-              </div>
+              ) : (
+                <div className="text-center">
+                  <div className="mb-4 flex items-center justify-center">
+                    <div
+                      className={`rounded-full p-6 shadow-lg ${
+                        currentSubscription?.package?.name === "premium"
+                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                          : currentSubscription?.package?.name === "standard"
+                            ? "bg-gradient-to-br from-blue-400 to-blue-600"
+                            : "bg-gradient-to-br from-gray-400 to-gray-600"
+                      }`}
+                    >
+                      <Award className="h-12 w-12 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold capitalize text-foreground">
+                    {currentSubscription?.package?.display_name || "Basic Plan"}
+                  </h3>
+                  {currentSubscription ? (
+                    <>
+                      <p className="mb-1 text-sm text-muted-foreground">
+                        Validity {currentSubscription.package.duration_months} Months
+                      </p>
+                      <p className="mb-2 text-sm text-muted-foreground">
+                        Valid till {new Date(currentSubscription.end_date).toLocaleDateString()}
+                      </p>
+                      <Badge variant={daysRemaining > 7 ? "default" : "destructive"} className="mb-4">
+                        {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Expired"}
+                      </Badge>
+                    </>
+                  ) : (
+                    <p className="mb-6 text-sm text-muted-foreground">Free plan - No expiration</p>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full border-primary/20 bg-accent/30 hover:bg-accent/50"
+                    onClick={() => router.push("/dashboard/plan")}
+                  >
+                    {currentSubscription?.package?.name === "premium" ? "Manage Plan" : "Upgrade Now"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
             <CardContent className="p-6">
               <h2 className="mb-6 font-serif text-xl font-semibold">Recent chat list</h2>
-              <div className="space-y-3">
-                {recentChats.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No recent chats</p>
-                ) : (
-                  recentChats.map((chat) => (
-                    <div
-                      key={chat.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
-                      onClick={() => router.push("/dashboard/chat")}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-12 w-12 border-2 border-primary/20">
-                          <AvatarImage src={chat.other_user.profile_photo || "/placeholder.svg"} />
-                          <AvatarFallback className="bg-primary/10 font-semibold text-primary">
-                            {chat.other_user.first_name?.[0]}
-                            {chat.other_user.last_name?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+              {loadingChats ? (
+                <div className="flex h-40 items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentChats.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">No recent chats</p>
+                  ) : (
+                    recentChats.map((chat) => (
+                      <div
+                        key={chat.id}
+                        className="flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
+                        onClick={() => router.push("/dashboard/chat")}
+                      >
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 border-2 border-primary/20">
+                            <AvatarImage src={chat.other_user.profile_photo || "/placeholder.svg"} />
+                            <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+                              {chat.other_user.first_name?.[0]}
+                              {chat.other_user.last_name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="truncate font-medium text-foreground">
+                            {chat.other_user.first_name} {chat.other_user.last_name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">{chat.other_user.living_in}</p>
+                        </div>
+                        {chat.unread_count > 0 && (
+                          <Badge className="h-6 min-w-6 rounded-full bg-green-500 px-2 text-xs font-semibold">
+                            {chat.unread_count}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="truncate font-medium text-foreground">
-                          {chat.other_user.first_name} {chat.other_user.last_name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">{chat.other_user.living_in}</p>
-                      </div>
-                      {chat.unread_count > 0 && (
-                        <Badge className="h-6 min-w-6 rounded-full bg-green-500 px-2 text-xs font-semibold">
-                          {chat.unread_count}
-                        </Badge>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

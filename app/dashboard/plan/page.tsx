@@ -219,7 +219,7 @@ export default function PlanPage() {
     : 0
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-8 p-6">
+    <div className="container mx-auto max-w-6xl space-y-8 p-3 sm:p-6">
       <div>
         <h1 className="text-3xl font-bold">My Plan</h1>
         <p className="text-gray-600">Manage your subscription and billing</p>

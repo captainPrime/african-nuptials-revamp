@@ -156,7 +156,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">
       <h1 className="font-serif text-2xl font-bold">Profile settings</h1>
 
       {/* Profile Section */}

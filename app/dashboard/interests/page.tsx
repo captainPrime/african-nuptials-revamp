@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { MapPin, Briefcase, Ruler } from "lucide-react"
+import { MapPin, Briefcase, Ruler, X } from "lucide-react"
 
 export default function InterestsPage() {
   const [requests, setRequests] = useState<InterestRequest[]>([])
   const [sentRequests, setSentRequests] = useState<InterestRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("new")
+  const [currentUserId, setCurrentUserId] = useState<string>("")
   const supabase = getSupabaseBrowserClient()
   const { toast } = useToast()
   const router = useRouter()
@@ -32,6 +33,8 @@ export default function InterestsPage() {
       } = await supabase.auth.getUser()
       if (!user) return
 
+      setCurrentUserId(user.id)
+
       const { data, error } = await supabase
         .from("interest_requests")
         .select(
@@ -42,6 +45,7 @@ export default function InterestsPage() {
         `,
         )
         .eq("receiver_id", user.id)
+        .neq("sender_id", user.id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -57,6 +61,7 @@ export default function InterestsPage() {
         `,
         )
         .eq("sender_id", user.id)
+        .neq("receiver_id", user.id)
         .order("created_at", { ascending: false })
 
       if (sentError) throw sentError
@@ -117,17 +122,41 @@ export default function InterestsPage() {
     }
   }
 
+  const handleCancelRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase.from("interest_requests").delete().eq("id", requestId)
+
+      if (error) throw error
+
+      toast({
+        title: "Request canceled",
+        description: "You have canceled this interest request",
+      })
+
+      fetchRequests()
+    } catch (error: any) {
+      console.error("[v0] Error canceling request:", error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel request",
+        variant: "destructive",
+      })
+    }
+  }
+
   const newRequests = requests.filter((r) => r.status === "pending")
   const acceptedRequests = requests.filter((r) => r.status === "accepted")
   const deniedRequests = requests.filter((r) => r.status === "denied")
 
-  const RequestCard = ({ request }: { request: InterestRequest }) => {
+  const RequestCard = ({ request, isSent = false }: { request: InterestRequest; isSent?: boolean }) => {
     const sender = request.sender
     const receiver = request.receiver
-    const profile = sender || receiver
+    const profile = isSent ? receiver : sender
     if (!profile) return null
 
     const age = profile.date_of_birth ? new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() : null
+
+    const isOwnSentRequest = isSent && request.sender_id === currentUserId
 
     return (
       <Card className="mb-4">
@@ -172,12 +201,12 @@ export default function InterestsPage() {
                   )}
                 </div>
               </div>
-              {sender && sender.membership_plan !== "free" && (
+              {!isSent && sender && sender.membership_plan !== "free" && (
                 <Badge variant="secondary" className="bg-primary/10 text-primary">
                   {sender.membership_plan}
                 </Badge>
               )}
-              {receiver && (
+              {isSent && (
                 <Badge
                   variant="secondary"
                   className={
@@ -198,7 +227,7 @@ export default function InterestsPage() {
                 View full profile
               </Button>
               <span className="text-xs text-muted-foreground">
-                {sender ? "Request on" : "Sent on"}:{" "}
+                {isSent ? "Sent on" : "Request on"}:{" "}
                 {new Date(request.created_at).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -208,7 +237,7 @@ export default function InterestsPage() {
             </div>
           </div>
 
-          {request.status === "pending" && sender && (
+          {!isSent && request.status === "pending" && sender && (
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -221,6 +250,18 @@ export default function InterestsPage() {
                 Deny
               </Button>
             </div>
+          )}
+
+          {isSent && request.status === "pending" && isOwnSentRequest && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/20 text-destructive hover:bg-destructive/10 bg-transparent"
+              onClick={() => handleCancelRequest(request.id)}
+            >
+              <X className="mr-1 h-4 w-4" />
+              Cancel
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -236,15 +277,23 @@ export default function InterestsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6">
       <h1 className="mb-6 font-serif text-2xl font-bold">Interest request</h1>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="new">New requests</TabsTrigger>
-          <TabsTrigger value="accepted">Accepted requests</TabsTrigger>
-          <TabsTrigger value="denied">Denied requests</TabsTrigger>
-          <TabsTrigger value="sent">Sent requests</TabsTrigger>
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-0">
+          <TabsTrigger value="new" className="text-xs sm:text-sm">
+            New
+          </TabsTrigger>
+          <TabsTrigger value="accepted" className="text-xs sm:text-sm">
+            Accepted
+          </TabsTrigger>
+          <TabsTrigger value="denied" className="text-xs sm:text-sm">
+            Denied
+          </TabsTrigger>
+          <TabsTrigger value="sent" className="text-xs sm:text-sm">
+            Sent
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="new">
@@ -291,7 +340,7 @@ export default function InterestsPage() {
               </CardContent>
             </Card>
           ) : (
-            sentRequests.map((request) => <RequestCard key={request.id} request={request} />)
+            sentRequests.map((request) => <RequestCard key={request.id} request={request} isSent={true} />)
           )}
         </TabsContent>
       </Tabs>

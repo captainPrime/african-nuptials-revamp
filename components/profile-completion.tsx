@@ -149,8 +149,9 @@ export function ProfileCompletion({
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`flex h-4 w-4 items-center justify-center rounded ${item.completed ? "bg-[#551c22]" : "bg-muted"
-                      }`}
+                    className={`flex h-4 w-4 items-center justify-center rounded ${
+                      item.completed ? "bg-[#551c22]" : "bg-muted"
+                    }`}
                   >
                     {item.completed && <Check className="h-4 w-4 text-white" />}
                   </div>
@@ -165,7 +166,10 @@ export function ProfileCompletion({
         </div>
 
         <div className="grid grid-cols-3 gap-3 border-t pt-6">
-          <div className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3">
+          <button
+            onClick={() => router.push("/dashboard/profile")}
+            className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3 transition-colors hover:bg-[#ffd6da]"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#551c22]">
               <Heart className="h-3 w-3 text-white" />
             </div>
@@ -173,9 +177,12 @@ export function ProfileCompletion({
               <p className="text-xl font-bold text-[#551c22]">{likesCount}</p>
               <p className="text-xs text-[#551c22]/70">Likes</p>
             </div>
-          </div>
+          </button>
 
-          <div className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3">
+          <button
+            onClick={() => router.push("/dashboard/profile-views")}
+            className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3 transition-colors hover:bg-[#ffd6da]"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#551c22]">
               <Eye className="h-3 w-3 text-white" />
             </div>
@@ -183,17 +190,20 @@ export function ProfileCompletion({
               <p className="text-xl font-bold text-[#551c22]">{viewsCount}</p>
               <p className="text-xs text-[#551c22]/70">Views</p>
             </div>
-          </div>
+          </button>
 
-          <div className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3">
+          <button
+            onClick={() => router.push("/dashboard/interests")}
+            className="flex items-center gap-2 rounded-lg bg-[#ffe2e5] p-3 transition-colors hover:bg-[#ffd6da]"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#551c22]">
               <Users className="h-3 w-3 text-white" />
             </div>
             <div>
-              <p className="text-xl f font-bold text-[#551c22]">{interestsCount}</p>
+              <p className="text-xl font-bold text-[#551c22]">{interestsCount}</p>
               <p className="text-xs text-[#551c22]/70">Interests</p>
             </div>
-          </div>
+          </button>
         </div>
 
         {showCompleteButton && completionPercentage < 100 && (

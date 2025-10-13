@@ -167,7 +167,7 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-3 sm:p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl font-bold">Your Matches</h1>
@@ -283,7 +283,7 @@ export default function MatchesPage() {
                 <SheetTitle className="sr-only">Profile Preview</SheetTitle>
               </SheetHeader>
 
-              <div className="space-y-6 p-6">
+              <div className="space-y-6">
                 <div className="relative">
                   <div className="aspect-[4/5] overflow-hidden rounded-xl">
                     <img
