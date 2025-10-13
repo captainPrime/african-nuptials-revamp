@@ -93,21 +93,30 @@ export default function PublicProfilePage() {
         }
 
         if (user.id !== params.id) {
-          await supabase.from("profile_views").insert({
-            profile_id: params.id as string,
-            viewer_id: user.id,
-          })
+          // Check if this user already viewed this profile today
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
 
-          const { count } = await supabase
+          const { data: existingView } = await supabase
             .from("profile_views")
-            .select("*", { count: "exact", head: true })
+            .select("id")
             .eq("profile_id", params.id as string)
+            .eq("viewer_id", user.id)
+            .gte("viewed_at", today.toISOString())
+            .maybeSingle()
 
-          if (count !== null) {
-            await supabase
-              .from("profiles")
-              .update({ profile_views: count })
-              .eq("id", params.id as string)
+          // Only insert if no view exists today (prevents duplicate views)
+          if (!existingView) {
+            const { error: viewError } = await supabase.from("profile_views").insert({
+              profile_id: params.id as string,
+              viewer_id: user.id,
+            })
+
+            if (viewError) {
+              console.error("[v0] Error tracking profile view:", viewError)
+            } else {
+              console.log("[v0] Profile view tracked successfully")
+            }
           }
         }
       }

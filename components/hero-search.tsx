@@ -71,7 +71,7 @@ export function HeroSearch() {
             I'm looking for a
           </label>
           <Select value={lookingFor} onValueChange={setLookingFor}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -98,7 +98,7 @@ export function HeroSearch() {
           </label>
           <div className="flex items-center gap-2">
             <Select value={ageFrom} onValueChange={setAgeFrom}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -111,7 +111,7 @@ export function HeroSearch() {
             </Select>
             <span className="text-sm text-muted-foreground">to</span>
             <Select value={ageTo} onValueChange={setAgeTo}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -140,7 +140,7 @@ export function HeroSearch() {
             of religion
           </label>
           <Select value={religion} onValueChange={setReligion}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Please select" />
             </SelectTrigger>
             <SelectContent>
@@ -173,7 +173,7 @@ export function HeroSearch() {
             and living in
           </label>
           <Select value={location} onValueChange={setLocation}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Please select" />
             </SelectTrigger>
             <SelectContent>
