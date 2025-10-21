@@ -181,10 +181,11 @@ export default function CompleteProfilePage() {
 
           toast({
             title: "Profile created successfully!",
-            description: "Welcome to African Nuptials",
+            description: "Please complete your profile to start finding matches.",
           })
 
-          router.push("/dashboard")
+          // Use window.location.href for hard navigation to refresh middleware state
+          window.location.href = "/dashboard/profile/edit"
         } else {
           // For paid packages, show payment UI
           setShowPayment(true)
@@ -617,8 +618,8 @@ export default function CompleteProfilePage() {
                   Payment integration coming soon. For now, your profile has been created with basic access.
                 </p>
               </div>
-              <Button onClick={() => router.push("/dashboard")} className="w-full">
-                Go to Dashboard
+              <Button onClick={() => (window.location.href = "/dashboard/profile/edit")} className="w-full">
+                Complete Your Profile
               </Button>
             </div>
           )}

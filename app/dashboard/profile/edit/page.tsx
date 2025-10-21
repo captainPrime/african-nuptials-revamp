@@ -108,6 +108,13 @@ export default function EditProfilePage() {
           setCoverPhoto(data.cover_photo || "")
           setPhotoGallery(Array.isArray(data.photo_gallery) ? data.photo_gallery : [])
           setHobbies(Array.isArray(data.hobbies) ? data.hobbies : [])
+
+          if (data.profile_completion < 50) {
+            toast({
+              title: "Welcome to African Nuptials!",
+              description: "Complete your profile to start finding your perfect match.",
+            })
+          }
         }
       }
       setLoading(false)
@@ -150,7 +157,11 @@ export default function EditProfilePage() {
         description: "Your profile has been successfully updated.",
       })
 
-      router.push("/dashboard/profile")
+      if (profileCompletion >= 100) {
+        window.location.href = "/dashboard"
+      } else {
+        router.push("/dashboard/profile")
+      }
     } catch (error: any) {
       console.error("[v0] Profile update error:", error)
       toast({
